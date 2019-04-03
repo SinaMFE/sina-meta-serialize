@@ -1,4 +1,8 @@
 {
+  "name": "@mfelibs/scp-meta-extract",
+  "version": "0.1.0",
+  "module": "dist/index.js",
+  "main": "dist/index.js",
   "dependencies": {
     "@types/node": "^11.13.0",
     "ts-meta-extract": "^0.5.0"
@@ -8,6 +12,7 @@
     "typescript": "^3.4.1"
   },
   "scripts": {
+    "preipublishOnly": "npm run compile",
     "compile": "tsc"
   }
 }
