@@ -1,31 +1,46 @@
-import { serializeTsFiles, serializeVueFiles, customEntryFilters } from "ts-meta-extract";
+import {
+  serializeTsFiles,
+  serializeVueFiles,
+  customEntryFilters
+} from "ts-meta-extract";
 import ts from "typescript";
 import { serializeDecoratorForSina } from "./decoratorSerialize";
 
 const DECORATOR_NAME_OF_REF_CLASS = "dataType";
 const PROPERTY_NAME = "code";
 
-export function customSerializeTsFiles(entries: string[]) {
+export interface CustomSerializerConfig {
+  entryDecoratorFilters: string[];
+  serializeDecoratorNameList: string[];
+}
+
+export function customSerializeTsFiles(
+  entries: string[],
+  config: CustomSerializerConfig
+) {
   const output = serializeTsFiles(entries, {
-    classEntryFilter: customEntryFilters.isDecoratedBy(["Component"]),
+    classEntryFilter: customEntryFilters.isDecoratedBy(config.entryDecoratorFilters),
     serializeDecorator: serializeDecoratorForSina({
-      decoratorNameList: ["Component", "Prop", "Inject", "Design"],
+      decoratorNameList: config.serializeDecoratorNameList,
       serializeRefClass
     })
   });
   return output;
 }
 
-export function customSerializeVueFiles(entries: string[]) {
+export function customSerializeVueFiles(
+  entries: string[],
+  config: CustomSerializerConfig
+) {
   const output = serializeVueFiles(entries, {
-    classEntryFilter: customEntryFilters.isDecoratedBy(["Component"]),
+    classEntryFilter: customEntryFilters.isDecoratedBy(config.entryDecoratorFilters),
     serializeDecorator: serializeDecoratorForSina({
-      decoratorNameList: ["Component", "Prop", "Inject", "Design"],
+      decoratorNameList: config.serializeDecoratorNameList,
       serializeRefClass
     })
   });
 
-  return output
+  return output;
 }
 
 /**

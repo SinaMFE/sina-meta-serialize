@@ -13,17 +13,10 @@ import {
 } from "@mfelibs/supercomp-property-decorator";
 import "@mfelibs/base-css";
 import "./cardStyle.css";
+import {Link} from "./module";
 
 enum inputType {
   text = "4"
-}
-
-@dataType({
-  code: "model.link"
-})
-export class Link {
-  web_url?: string;
-  hb_url?: string;
 }
 
 @Maybe({
@@ -32,6 +25,14 @@ export class Link {
 class Hapi {
   private name: string;
 }
+
+// @dataType({
+//   code: "model.link"
+// })
+// export class Link {
+//   web_url?: string;
+//   hb_url?: string;
+// }
 
 @Component({})
 export default class Card extends SPComponent {
@@ -42,7 +43,7 @@ export default class Card extends SPComponent {
     description: "card 的title"
   })
   @Prop({})
-  title!: string;
+  title!: Link;
 
   @Design({
     label: "副标题",

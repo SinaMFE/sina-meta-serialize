@@ -5,6 +5,9 @@ namespace symbolType {
   export function isClass(symbol: ts.Symbol) {
     return symbol.getFlags() === ts.SymbolFlags.Class;
   }
+  export function isAlias(symbol: ts.Symbol) {
+    return symbol.getFlags() === ts.SymbolFlags.Alias;
+  }
 }
 
 namespace decoratorInfo {
@@ -211,8 +214,8 @@ function serializeClassInitializerIfNeeded(
   checker: ts.TypeChecker,
   serializeFunction: (node: ts.ClassDeclaration) => string | undefined
 ): string | undefined {
-  const symbol = checker.getSymbolAtLocation(node);
-
+  const type = checker.getTypeAtLocation(node);
+  const symbol = type.getSymbol();
   if (symbol && symbolType.isClass(symbol)) {
     // do sth...
     const classNode = symbol.valueDeclaration as ts.ClassDeclaration;
