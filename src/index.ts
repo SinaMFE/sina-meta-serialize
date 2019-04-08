@@ -6,6 +6,9 @@ import {
 import ts from "typescript";
 import { serializeDecoratorForSina } from "./decoratorSerialize";
 import { sinaTransformer } from "./metaTransformer";
+import glob from "glob";
+import path from "path";
+import fs from "fs";
 
 const DECORATOR_NAME_OF_REF_CLASS = "dataType";
 const PROPERTY_NAME = "code";
@@ -23,10 +26,46 @@ export function serailizeVueFilesWithSinaFormat(
   return sinaTransformer(output);
 }
 
+/**
+ * Accept a directory path and process all `.vue` files in it.
+ *
+ * @export
+ * @param {string} dirName
+ * @returns
+ */
+export function customSerializeVueByDirectory(
+  dirName: string,
+  config: CustomSerializerConfig
+): Promise<any> {
+  if (!isDir(dirName)) {
+    throw new Error(`"${dirName}" does not exist or is not a directory.`);
+  }
+  return new Promise((resvole, reject) => {
+    glob(`${dirName}/**/*.vue`, function(err, files) {
+      if (err) {
+        reject(err);
+      }
+      const resolvedFilePath = files.map(file => path.resolve(file));
+      const output = customSerializeVueFiles(resolvedFilePath, config);
+      resvole(output);
+    });
+  });
+}
+
+/**
+ * Return `true` if path is a directory.
+ *
+ * @param {string} path
+ * @returns
+ */
+function isDir(path: string) {
+  return fs.existsSync(path) && fs.statSync(path).isDirectory();
+}
+
 export function customSerializeTsFiles(
   entries: string[],
   config: CustomSerializerConfig
-) {
+): any {
   const output = serializeTsFiles(entries, {
     classEntryFilter: customEntryFilters.isDecoratedBy(
       config.entryDecoratorFilters
@@ -103,7 +142,8 @@ function getPropertyOfLiteralObject(
           return (node as ts.PropertyAssignment).name.getText() === name;
         })
         .map(node => {
-          return ((node as ts.PropertyAssignment).initializer as ts.LiteralExpression).text;
+          return ((node as ts.PropertyAssignment)
+            .initializer as ts.LiteralExpression).text;
         });
       return out[0];
     }
