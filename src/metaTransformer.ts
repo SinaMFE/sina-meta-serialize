@@ -22,7 +22,7 @@ export function sinaTransformer(meta: any) {
   }
 }
 
-function collectComponents(datalist: any[]) {
+function collectComponents(datalist: any[]): any {
   const components = getAllComponents(datalist);
   return  _.compose(_.mapValues(_.head), _.groupBy("id"), _.map(transformComponent))(components);
 }
@@ -65,7 +65,6 @@ function transformComponent(component: any) {
     return id
   }
 
-  // const props = transformProps()
 }
 
 function getDecoratorByName(decorators: any[], name: string) {
