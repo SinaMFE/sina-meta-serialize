@@ -1,14 +1,21 @@
-import { customSerializeTsFiles, serailizeVueFilesWithSinaFormat, customSerializeVueFiles, CustomSerializerConfig} from "../src/index";
+import { customSerializeTsFiles, customSerailizeVueFilesWithSinaFormat, customSerializeVueFiles, CustomSerializerConfig, CustomSerializerConfigForDirectory} from "../src/index";
 import path from "path";
 import fs from "fs";
 
-const config: CustomSerializerConfig = {
-  serializeDecoratorNameList: ["SComponent", "Prop", "Inject", "Design", "dataType"],
-  entryDecoratorFilters: ["SComponent"]
+const config: CustomSerializerConfigForDirectory = {
+  serializeDecoratorNameList: [
+    "SComponent",
+    "Prop",
+    "Inject",
+    "Design",
+    "dataType"
+  ],
+  entryDecoratorFilters: ["SComponent"],
+  withSinaFormatTransformer: true
 };
 
 // const out = customSerializeTsFiles([path.join(__dirname, "../template/index.ts")], config)
-const out = serailizeVueFilesWithSinaFormat(
+const out = customSerailizeVueFilesWithSinaFormat(
   [path.join(__dirname, "../template/index.vue")],
   config
 );

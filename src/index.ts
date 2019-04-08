@@ -18,7 +18,12 @@ export interface CustomSerializerConfig {
   serializeDecoratorNameList: string[];
 }
 
-export function serailizeVueFilesWithSinaFormat(
+export interface CustomSerializerConfigForDirectory
+  extends CustomSerializerConfig {
+  withSinaFormatTransformer?: boolean;
+}
+
+export function customSerailizeVueFilesWithSinaFormat(
   entries: string[],
   config: CustomSerializerConfig
 ) {
@@ -35,7 +40,7 @@ export function serailizeVueFilesWithSinaFormat(
  */
 export function customSerializeVueByDirectory(
   dirName: string,
-  config: CustomSerializerConfig
+  config: CustomSerializerConfigForDirectory
 ): Promise<any> {
   if (!isDir(dirName)) {
     throw new Error(`"${dirName}" does not exist or is not a directory.`);
@@ -46,7 +51,12 @@ export function customSerializeVueByDirectory(
         reject(err);
       }
       const resolvedFilePath = files.map(file => path.resolve(file));
-      const output = customSerializeVueFiles(resolvedFilePath, config);
+      let output;
+      if(config.withSinaFormatTransformer) {
+        output = customSerailizeVueFilesWithSinaFormat(resolvedFilePath, config);
+      } else {
+        output = customSerializeVueFiles(resolvedFilePath, config);
+      }
       resvole(output);
     });
   });
