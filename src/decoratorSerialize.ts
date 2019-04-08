@@ -176,7 +176,7 @@ function unstable_serializeObjectLiteral(
     ) {
       // Here every value is a `string` type, but in fact they can be numeric or string or boolean literal.
       // If needed.
-      accum[propNode.name.getText()] = propNode.initializer.getText();
+      accum[propNode.name.getText()] = propNode.initializer.text;
     } else if (
       ts.isPropertyAssignment(propNode) &&
       ts.isIdentifier(propNode.initializer) &&
@@ -237,7 +237,7 @@ function serializeEnumInitializerIfNeeded(
       (symbol.valueDeclaration as ts.PropertyAssignment).initializer
     )
   ) {
-    return (symbol.valueDeclaration as ts.PropertyAssignment).initializer.getText();
+    return ((symbol.valueDeclaration as ts.PropertyAssignment).initializer as ts.LiteralExpression).text;
   }
   return undefined;
 }

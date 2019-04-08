@@ -5,6 +5,7 @@ import {
 } from "ts-meta-extract";
 import ts from "typescript";
 import { serializeDecoratorForSina } from "./decoratorSerialize";
+import { sinaTransformer } from "./metaTransformer";
 
 const DECORATOR_NAME_OF_REF_CLASS = "dataType";
 const PROPERTY_NAME = "code";
@@ -14,12 +15,22 @@ export interface CustomSerializerConfig {
   serializeDecoratorNameList: string[];
 }
 
+export function serailizeVueFilesWithSinaFormat(
+  entries: string[],
+  config: CustomSerializerConfig
+) {
+  const output = customSerializeVueFiles(entries, config);
+  return sinaTransformer(output);
+}
+
 export function customSerializeTsFiles(
   entries: string[],
   config: CustomSerializerConfig
 ) {
   const output = serializeTsFiles(entries, {
-    classEntryFilter: customEntryFilters.isDecoratedBy(config.entryDecoratorFilters),
+    classEntryFilter: customEntryFilters.isDecoratedBy(
+      config.entryDecoratorFilters
+    ),
     serializeDecorator: serializeDecoratorForSina({
       decoratorNameList: config.serializeDecoratorNameList,
       serializeRefClass
@@ -33,7 +44,9 @@ export function customSerializeVueFiles(
   config: CustomSerializerConfig
 ) {
   const output = serializeVueFiles(entries, {
-    classEntryFilter: customEntryFilters.isDecoratedBy(config.entryDecoratorFilters),
+    classEntryFilter: customEntryFilters.isDecoratedBy(
+      config.entryDecoratorFilters
+    ),
     serializeDecorator: serializeDecoratorForSina({
       decoratorNameList: config.serializeDecoratorNameList,
       serializeRefClass
@@ -90,7 +103,7 @@ function getPropertyOfLiteralObject(
           return (node as ts.PropertyAssignment).name.getText() === name;
         })
         .map(node => {
-          return (node as ts.PropertyAssignment).initializer.getText();
+          return ((node as ts.PropertyAssignment).initializer as ts.LiteralExpression).text;
         });
       return out[0];
     }
