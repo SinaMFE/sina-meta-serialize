@@ -1,6 +1,6 @@
 {
   "name": "sina-meta-serialize",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "module": "dist/index.js",
   "main": "dist/index.js",
   "dependencies": {
@@ -20,6 +20,7 @@
   },
   "scripts": {
     "prepublishOnly": "npm run compile",
-    "compile": "tsc"
+    "compile": "tsc",
+    "test": "ts-node test/index.ts"
   }
 }

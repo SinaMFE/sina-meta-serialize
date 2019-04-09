@@ -1,12 +1,17 @@
 import _ from "lodash/fp";
 
+enum SComponentName {
+  Version = "sversion",
+  Name = "sname"
+}
+
 function tap(a: any) {
   debugger;
   return a;
 }
 
 /**
- * Transfrom result of ts serializer into format that sina needs.
+ * Transfrom result of ts serializer into sina required format.
  *
  * @export
  * @param {*} meta
@@ -19,52 +24,63 @@ export function sinaTransformer(meta: any) {
   return {
     dataTypes,
     components
-  }
+  };
 }
 
-function collectComponents(datalist: any[]): any {
+function collectComponents(datalist: any[]): { name: string; props: any } {
   const components = getAllComponents(datalist);
-  return  _.compose(_.mapValues(_.head), _.groupBy("id"), _.map(transformComponent))(components);
+  return _.compose<any, any, any>(
+    _.mapValues(_.head),
+    _.groupBy("name"),
+    _.map(transformComponent)
+  )(components);
 }
 
-function collectDataType(datalist: any[]) {
+function collectDataType(datalist: any[]): { name: string; props: any } {
   const dependencies = getAllDenpendecies(datalist);
   return _.compose<any, any, any, any>(
     _.mapValues(_.head),
-    _.groupBy("id"),
+    _.groupBy("name"),
     _.compact,
     _.map(transformDataType)
   )(dependencies);
 }
 
-function transformComponent(component: any) {
+function transformComponent(component: any): { name: string; props: any } {
   // Components are unlike dependencies because deps need to be filtered.
-  const id = getIdOfComponent(component);
+  const name = getIdOfComponent(component);
   const props = transformProps(component.members);
 
   return {
-    id,
+    name,
     props
-  }
+  };
 
   function getIdOfComponent(component: any) {
+    return getParsedSComponentDecorator(component)[SComponentName.Name];
+  }
+
+  function getVersionOfComponent(component: any) {
+    return getParsedSComponentDecorator(component)[SComponentName.Version];
+  }
+
+  function getParsedSComponentDecorator(component: any) {
     const decorator = getDecoratorByName(component.decorators, "SComponent");
-    let id;
+    let out;
     try {
-     id = _.compose<any, any, any, any, any>(
-        _.property("name"),
+      out = _.compose<any, any, any, any, any>(
         JSON.parse,
         _.property("value"),
         _.head,
         _.property("args")
       )(decorator);
-    } catch(e) {
-      throw new Error(`Cannot get valid meta data for SComponent decorator of class ${component}`);
+    } catch (e) {
+      throw new Error(
+        `Cannot get valid meta data for SComponent decorator of class ${component}`
+      );
     }
-
-    return id
+    return out;
   }
-
 }
 
 function getDecoratorByName(decorators: any[], name: string) {
@@ -80,10 +96,10 @@ function transformDataType(dep: any) {
     const { decorators } = dep;
     return _.any((decorator: any) => decorator.name === "dataType")(decorators);
   }
-  function transform(dep: any) {
+  function transform(dep: any): { name: string; props: any } {
     const { decorators, members } = dep;
 
-    const id = _.compose<any, any, any>(
+    const name = _.compose<any, any, any>(
       getDataTypeId,
       _.head,
       _.filter(isADataTypeDecorator)
@@ -91,7 +107,7 @@ function transformDataType(dep: any) {
 
     const props = transformProps(members);
     return {
-      id,
+      name,
       props
     };
   }

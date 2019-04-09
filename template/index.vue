@@ -18,8 +18,8 @@
 import {Link} from "./module"
 
 @SComponent({
-    name:"testmyonly-comp",
-    version:version
+    sname:"testmyonly-comp",
+    sversion:version
 })
 export default class Card extends SPComponent {
     @Design({
