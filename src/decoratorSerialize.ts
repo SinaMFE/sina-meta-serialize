@@ -233,11 +233,13 @@ function serializeEnumInitializerIfNeeded(
   if (
     symbol &&
     symbol.valueDeclaration &&
+    (symbol.valueDeclaration as ts.EnumMember).initializer &&
     ts.isLiteralExpression(
-      (symbol.valueDeclaration as ts.PropertyAssignment).initializer
+      (symbol.valueDeclaration as ts.EnumMember).initializer as ts.Expression
     )
   ) {
-    return ((symbol.valueDeclaration as ts.PropertyAssignment).initializer as ts.LiteralExpression).text;
+    return ((symbol.valueDeclaration as ts.EnumMember)
+      .initializer as ts.LiteralExpression).text;
   }
   return undefined;
 }

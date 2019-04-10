@@ -50,7 +50,11 @@ function transformComponent(component: any): { name: string; props: any } {
   // Components are unlike dependencies because deps need to be filtered.
   const name = getIdOfComponent(component);
   const props = transformProps(component.members);
-
+  if (!name) {
+    throw new Error(
+      `Cannot get "name" from "SComponent" decorator from class declaration ${component}.`
+    );
+  }
   return {
     name,
     props
@@ -89,7 +93,13 @@ function getDecoratorByName(decorators: any[], name: string) {
 
 function transformDataType(dep: any) {
   if (isDepContainDataTypeDecorator(dep)) {
-    return transform(dep);
+    const out = transform(dep);
+    if (!out.name) {
+      throw new Error(
+        `Cannot get "code" from "dataType" decorator in type declaration ${dep}`
+      );
+    }
+    return out;
   }
 
   function isDepContainDataTypeDecorator(dep: any): boolean {
@@ -102,7 +112,7 @@ function transformDataType(dep: any) {
     const name = _.compose<any, any, any>(
       getDataTypeId,
       _.head,
-      _.filter(isADataTypeDecorator)
+      _.filter(isDataTypeDecorator)
     )(decorators);
 
     const props = transformProps(members);
@@ -145,7 +155,7 @@ function transformProps(members: any[]) {
  */
 function isMemberhasDesginDecorator(member: any) {
   const decorators = member.decorators;
-  return _.filter(isHasDesignDecorator)(decorators).length > 0;
+  return _.filter(isDesignDecorator)(decorators).length > 0;
 }
 
 /**
@@ -154,7 +164,7 @@ function isMemberhasDesginDecorator(member: any) {
  * @param {*} decorator
  * @returns
  */
-function isHasDesignDecorator(decorator: any) {
+function isDesignDecorator(decorator: any) {
   return decorator.name === "Design";
 }
 
@@ -185,7 +195,7 @@ function transformDecoratorForMember(member: any) {
   }
 }
 
-function isADataTypeDecorator(decorator: any) {
+function isDataTypeDecorator(decorator: any) {
   return decorator.name === "dataType";
 }
 

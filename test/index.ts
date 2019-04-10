@@ -14,10 +14,10 @@ const config: CustomSerializerConfigForDirectory = {
   withSinaFormatTransformer: true
 };
 
-// const out = customSerializeTsFiles([path.join(__dirname, "../template/index.ts")], config)
-const out = customSerailizeVueFilesWithSinaFormat(
-  [path.join(__dirname, "../template/index.vue")],
-  config
-);
+const out = customSerializeTsFiles([path.join(__dirname, "../template/index.ts")], config)
+// const out = customSerailizeVueFilesWithSinaFormat(
+//   [path.join(__dirname, "../template/index.vue")],
+//   config
+// );
 
 fs.writeFileSync("./result.json", JSON.stringify(out));

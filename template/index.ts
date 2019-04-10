@@ -16,7 +16,8 @@ import "./cardStyle.css";
 import {Link} from "./module";
 
 enum inputType {
-  text = "4"
+  text,
+  fds
 }
 
 @Maybe({
@@ -34,12 +35,12 @@ class Hapi {
 //   hb_url?: string;
 // }
 
-@Component({})
+@SComponent({})
 export default class Card extends SPComponent {
   @Design({
     label: "title",
     dataType: Link,
-    inputType: inputType.text,
+    inputType: inputType.fds,
     description: "card 的title"
   })
   @Prop({})
