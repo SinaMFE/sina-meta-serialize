@@ -16,7 +16,7 @@ import "./cardStyle.css";
 import {Link} from "./module";
 
 enum inputType {
-  text,
+  text = 2,
   fds
 }
 
@@ -40,7 +40,7 @@ export default class Card extends SPComponent {
   @Design({
     label: "title",
     dataType: Link,
-    inputType: inputType.fds,
+    inputType: inputType.text,
     description: "card 的title"
   })
   @Prop({})

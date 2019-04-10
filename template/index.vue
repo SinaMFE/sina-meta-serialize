@@ -17,6 +17,11 @@
 
 import {Link} from "./module"
 
+enum inputType {
+  text = 2,
+  fds
+}
+
 @SComponent({
     sname:"testmyonly-comp",
     sversion:version
@@ -25,7 +30,7 @@ export default class Card extends SPComponent {
     @Design({
         label:"文章链接",
         dataType:Link,
-        inputType:inputType.text,
+        inputType:inputType.fds,
         description:"文章链接",
         selector:"linkSelector"
     })
