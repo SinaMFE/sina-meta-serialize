@@ -34,7 +34,7 @@ export default class Card extends SPComponent {
         description:"文章链接",
         selector:"linkSelector"
     })
-    mylink?:string;
+    mylink?:Link;
     mounted(){
         console.log("mounted");
     }

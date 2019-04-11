@@ -5,11 +5,6 @@ enum SComponentName {
   Name = "sname"
 }
 
-function tap(a: any) {
-  debugger;
-  return a;
-}
-
 /**
  * Transfrom result of ts serializer into sina required format.
  *
@@ -20,10 +15,11 @@ function tap(a: any) {
 export function sinaTransformer(meta: any) {
   const dataTypes = collectDataType(meta);
   const components = collectComponents(meta);
+  const processedComponents = transformComponentsTypeReferToDecoratorValue(components, dataTypes);
 
   return {
     dataTypes,
-    components
+    components: processedComponents
   };
 }
 
@@ -34,6 +30,57 @@ function collectComponents(datalist: any[]): { name: string; props: any } {
     _.groupBy("name"),
     _.map(transformComponent)
   )(components);
+}
+
+/**
+ * Property item specified of each serialized class in final result files.
+ *
+ * @interface Prop
+ */
+interface Prop {
+  isPrimitiveType: boolean;
+  name: string;
+  returnType: string;
+}
+
+/**
+ * Mainly handle the type reference of components' property, and use sina specified id
+ * in decorator of class instead.
+ *
+ * @param {*} components
+ * @param {*} dataTypes
+ * @returns
+ */
+function transformComponentsTypeReferToDecoratorValue(components: any, dataTypes: any) {
+  const output = _.mapValues(handleComponent)(components);
+  return output;
+
+  function handleComponent(component: any) {
+    const props = _.mapValues(handleProps)(component.props)
+    return {
+      ...component,
+      props
+    }
+  }
+
+  function handleProps(prop: Prop) {
+      let returnType = prop.returnType;
+      if(!prop.isPrimitiveType) {
+        returnType = findTypeStringtoDecoratorValue(
+          prop.returnType,
+          dataTypes
+        );
+      }
+      return {
+        ...prop,
+        returnType
+      }
+    }
+
+  function findTypeStringtoDecoratorValue(type: string, dataTypes: any): string {
+    const nameInDecoratorLiteral = _.compose(_.property("name"), _.find(_.matches({originalTypeName: type})))(dataTypes)
+    return nameInDecoratorLiteral
+  }
 }
 
 function collectDataType(datalist: any[]): { name: string; props: any } {
@@ -93,7 +140,7 @@ function getDecoratorByName(decorators: any[], name: string) {
 
 function transformDataType(dep: any) {
   if (isDepContainDataTypeDecorator(dep)) {
-    const out = transform(dep);
+    const out = transformSingleDep(dep);
     if (!out.name) {
       throw new Error(
         `Cannot get "code" from "dataType" decorator in type declaration ${dep}`
@@ -101,26 +148,28 @@ function transformDataType(dep: any) {
     }
     return out;
   }
+}
 
-  function isDepContainDataTypeDecorator(dep: any): boolean {
-    const { decorators } = dep;
-    return _.any((decorator: any) => decorator.name === "dataType")(decorators);
-  }
-  function transform(dep: any): { name: string; props: any } {
-    const { decorators, members } = dep;
+function isDepContainDataTypeDecorator(dep: any): boolean {
+  const { decorators } = dep;
+  return _.any((decorator: any) => decorator.name === "dataType")(decorators);
+}
+function transformSingleDep(dep: any): { name: string; props: any, originalTypeName: string } {
+  const { decorators, members, name } = dep;
 
-    const name = _.compose<any, any, any>(
-      getDataTypeId,
-      _.head,
-      _.filter(isDataTypeDecorator)
-    )(decorators);
+  const nameInDecoratorValue = _.compose<any, any, any>(
+    getDataTypeId,
+    _.head,
+    _.filter(isDataTypeDecorator)
+  )(decorators);
 
-    const props = transformProps(members);
-    return {
-      name,
-      props
-    };
-  }
+  const props = transformProps(members);
+  // Original typeName is for postprocess to identify type reference of root class members.
+  return {
+    name: nameInDecoratorValue,
+    props,
+    originalTypeName: name
+  };
 }
 
 /**
@@ -138,10 +187,12 @@ function transformProps(members: any[]) {
     _.filter(isMemberhasDesginDecorator)
   )(members);
 
+  
   function filterAndMapProps(prop: any) {
     return {
       name: prop.name,
       returnType: prop.type,
+      isPrimitiveType: prop.isPrimitiveType,
       design: prop.design
     };
   }
