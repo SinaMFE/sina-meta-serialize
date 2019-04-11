@@ -22,7 +22,7 @@ enum inputType {
   fds
 }
 
-@SComponent({
+@Component({
     sname:"testmyonly-comp",
     sversion:version
 })

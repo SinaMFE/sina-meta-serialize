@@ -6,8 +6,10 @@ import {
 import ts from "typescript";
 import { serializeDecoratorForSina } from "./decoratorSerialize";
 import { sinaTransformer } from "./metaTransformer";
+import { genScriptContentFromVueLikeRawText, curryRight2 } from "./utils";
 import glob from "glob";
 import path from "path";
+import _ from "lodash/fp";
 import fs from "fs";
 
 const DECORATOR_NAME_OF_REF_CLASS = "dataType";
@@ -27,8 +29,91 @@ export function customSerailizeVueFilesWithSinaFormat(
   entries: string[],
   config: CustomSerializerConfig
 ) {
-  const output = customSerializeVueFiles(entries, config);
+  const validEntries = filterEntries(entries, config);
+  if (validEntries.length === 0) {
+    // No file to be processed.
+    return undefined;
+  }
+  const output = customSerializeVueFiles(validEntries, config);
   return sinaTransformer(output);
+}
+
+/**
+ *
+ *
+ * @param {string[]} entries
+ * @param {CustomSerializerConfig} config
+ * @returns {string[]}
+ */
+function filterEntries(
+  entries: string[],
+  config: CustomSerializerConfig
+): string[] {
+  const files = getFileContentFromEntries(entries);
+  const validFiles = _.filter(
+    curryRight2(isFileValid)(config.entryDecoratorFilters)
+  )(files);
+  return _.map(_.property("fileName"))(validFiles);
+
+  function isFileValid(file: File, entryDecoratorFilters: string[]): boolean {
+    const { content } = file;
+    return isFileContentValid(content, entryDecoratorFilters);
+  }
+}
+
+interface File {
+  fileName: string;
+  content: string;
+}
+
+function getFileContentFromEntries(entries: string[]): File[] {
+  return _.map(getFile)(entries);
+
+  function getFile(path: string): File {
+    return {
+      fileName: path,
+      content: readFile(path)
+    };
+  }
+
+  function readFile(path: string): string {
+    if (!isFilePath(path)) {
+      throw new Error(`File ${path} is invalid.`);
+    }
+    return fs.readFileSync(path).toString();
+  }
+}
+
+/**
+ * Simply use regular matching to preliminary determine whether file should be proccessed.
+ *
+ */
+function isFileContentValid(
+  fileContent: string,
+  entryDecoratorFilters: string[]
+): boolean {
+  if (entryDecoratorFilters.length === 0) {
+    return false;
+  }
+  const scriptContent = genScriptContentFromVueLikeRawText(fileContent);
+  return _.any(isScriptContainDecorator)(entryDecoratorFilters);
+
+  /**
+   * NOTE: `scriptContent` is in closure.
+   *
+   * @param {string} decoratorName
+   * @returns
+   */
+  function isScriptContainDecorator(decoratorName: string) {
+    return scriptContent.indexOf(decoratorName) > -1;
+  }
+}
+
+function isFilePath(path: string): boolean {
+  if (!fs.existsSync(path) || !fs.statSync(path).isFile()) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -52,8 +137,11 @@ export function customSerializeVueByDirectory(
       }
       const resolvedFilePath = files.map(file => path.resolve(file));
       let output;
-      if(config.withSinaFormatTransformer) {
-        output = customSerailizeVueFilesWithSinaFormat(resolvedFilePath, config);
+      if (config.withSinaFormatTransformer) {
+        output = customSerailizeVueFilesWithSinaFormat(
+          resolvedFilePath,
+          config
+        );
       } else {
         output = customSerializeVueFiles(resolvedFilePath, config);
       }

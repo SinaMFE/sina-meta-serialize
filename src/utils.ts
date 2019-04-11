@@ -29,3 +29,21 @@ export function curryRight3(func: Function) {
     };
   };
 }
+
+/**
+ * This function may not work properly in some situations.
+ * Need to be considered precisely.
+ * Maybe change the implementation.
+ *
+ * @param content
+ * @returns
+ */
+export function genScriptContentFromVueLikeRawText(
+  content: string
+): string {
+  const openTagString = `<script lang="ts">`;
+  const closeTagString = `</script>`;
+  const start = content.indexOf(openTagString) + openTagString.length;
+  const end = content.indexOf(closeTagString);
+  return content.substring(start, end);
+}

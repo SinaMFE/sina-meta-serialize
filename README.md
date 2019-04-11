@@ -54,7 +54,7 @@ async function main() {
 
 `config` includes:
 
-- **customSerializeVueByDirectory**: Accept a string array to specify decorators which should be serialized. 
+- **serializeDecoratorNameList**: Accept a string array to specify decorators which should be serialized. 
 
 - **entryDecoratorFilters**: Accept a string array to define decorators which entry class should be decorated by. Only classes with those decorators will be serialized.
 
