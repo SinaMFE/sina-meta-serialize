@@ -5,6 +5,50 @@ enum SComponentName {
   Name = "sname"
 }
 
+export namespace sinaMeta {
+  /**
+   * The definition of transformed result of `sinaTransformer`.
+   *
+   * @export
+   * @interface TransfomedResult
+   */
+  export interface TransfomedResult {
+    /**
+     * Mainly are the dependencies of `components`.
+     *
+     * @type {ClassMap}
+     * @memberof TransfomedResult
+     */
+    dataTypes: ClassMap;
+    /**
+     * Components of sina project.
+     *
+     * @type {ClassMap}
+     * @memberof TransfomedResult
+     */
+    components: ClassMap
+  }
+  export interface ClassMap {
+    [className: string]: Class;
+  }
+  export interface Class {
+    name: string;
+    props: Property;
+    originalTypeName?: string;
+  }
+
+  export interface Property {
+    [prop: string]: PropertyValue;
+  }
+
+  export interface PropertyValue {
+    name: string;
+    returnType: string;
+    isPrimitiveType: boolean;
+    design: any;
+  }
+}
+
 /**
  * Transfrom result of ts serializer into sina required format.
  *
@@ -12,18 +56,22 @@ enum SComponentName {
  * @param {*} meta
  * @returns
  */
-export function sinaTransformer(meta: any) {
+export function sinaTransformer(meta: any): sinaMeta.TransfomedResult {
   const dataTypes = collectDataType(meta);
   const components = collectComponents(meta);
-  const processedComponents = transformComponentsTypeReferToDecoratorValue(components, dataTypes);
-
+  const processedComponents = transformComponentsTypeReferToDecoratorValue(
+    components,
+    dataTypes
+  );
   return {
     dataTypes,
     components: processedComponents
   };
 }
 
-function collectComponents(datalist: any[]): { name: string; props: any } {
+function collectComponents(
+  datalist: any[]
+): sinaMeta.ClassMap {
   const components = getAllComponents(datalist);
   return _.compose<any, any, any>(
     _.mapValues(_.head),
@@ -51,39 +99,47 @@ interface Prop {
  * @param {*} dataTypes
  * @returns
  */
-function transformComponentsTypeReferToDecoratorValue(components: any, dataTypes: any) {
-  const output = _.mapValues(handleComponent)(components);
+function transformComponentsTypeReferToDecoratorValue(
+  components: sinaMeta.ClassMap,
+  dataTypes: sinaMeta.ClassMap
+): sinaMeta.ClassMap {
+  const output = _.mapValues<any, any>(handleComponent)(components);
   return output;
 
   function handleComponent(component: any) {
-    const props = _.mapValues(handleProps)(component.props)
+    const props = _.mapValues(handleProps)(component.props);
     return {
       ...component,
       props
-    }
+    };
   }
 
   function handleProps(prop: Prop) {
-      let returnType = prop.returnType;
-      if(!prop.isPrimitiveType) {
-        returnType = findTypeStringtoDecoratorValue(
-          prop.returnType,
-          dataTypes
-        );
-      }
-      return {
-        ...prop,
-        returnType
-      }
+    let returnType = prop.returnType;
+    if (!prop.isPrimitiveType) {
+      returnType = findTypeStringtoDecoratorValue(prop.returnType, dataTypes);
     }
+    return {
+      ...prop,
+      returnType
+    };
+  }
 
-  function findTypeStringtoDecoratorValue(type: string, dataTypes: any): string {
-    const nameInDecoratorLiteral = _.compose(_.property("name"), _.find(_.matches({originalTypeName: type})))(dataTypes)
-    return nameInDecoratorLiteral
+  function findTypeStringtoDecoratorValue(
+    type: string,
+    dataTypes: any
+  ): string {
+    const nameInDecoratorLiteral = _.compose(
+      _.property("name"),
+      _.find(_.matches({ originalTypeName: type }))
+    )(dataTypes);
+    return nameInDecoratorLiteral;
   }
 }
 
-function collectDataType(datalist: any[]): { name: string; props: any } {
+function collectDataType(
+  datalist: any[]
+): sinaMeta.ClassMap {
   const dependencies = getAllDenpendecies(datalist);
   return _.compose<any, any, any, any>(
     _.mapValues(_.head),
@@ -93,7 +149,9 @@ function collectDataType(datalist: any[]): { name: string; props: any } {
   )(dependencies);
 }
 
-function transformComponent(component: any): { name: string; props: any } {
+function transformComponent(
+  component: any
+): sinaMeta.Class {
   // Components are unlike dependencies because deps need to be filtered.
   const name = getIdOfComponent(component);
   const props = transformProps(component.members);
@@ -111,7 +169,14 @@ function transformComponent(component: any): { name: string; props: any } {
     return getParsedSComponentDecorator(component)[SComponentName.Name];
   }
 
+  /**
+   * ?? Havenot implmented because is a runtime feature.
+   *
+   * @param {*} component
+   * @returns
+   */
   function getVersionOfComponent(component: any) {
+    // Meaningless.
     return getParsedSComponentDecorator(component)[SComponentName.Version];
   }
 
@@ -138,7 +203,7 @@ function getDecoratorByName(decorators: any[], name: string) {
   return _.find(_.matches({ name }), decorators);
 }
 
-function transformDataType(dep: any) {
+function transformDataType(dep: any): sinaMeta.Class | undefined {
   if (isDepContainDataTypeDecorator(dep)) {
     const out = transformSingleDep(dep);
     if (!out.name) {
@@ -147,6 +212,8 @@ function transformDataType(dep: any) {
       );
     }
     return out;
+  } else {
+    return undefined;
   }
 }
 
@@ -154,7 +221,7 @@ function isDepContainDataTypeDecorator(dep: any): boolean {
   const { decorators } = dep;
   return _.any((decorator: any) => decorator.name === "dataType")(decorators);
 }
-function transformSingleDep(dep: any): { name: string; props: any, originalTypeName: string } {
+function transformSingleDep(dep: any): sinaMeta.Class {
   const { decorators, members, name } = dep;
 
   const nameInDecoratorValue = _.compose<any, any, any>(
@@ -178,7 +245,7 @@ function transformSingleDep(dep: any): { name: string; props: any, originalTypeN
  * @param {any[]} members
  * @returns
  */
-function transformProps(members: any[]) {
+function transformProps(members: any[]): sinaMeta.Property {
   return _.compose<any, any, any, any, any, any>(
     _.mapValues(filterAndMapProps),
     _.mapValues(_.head),
@@ -187,8 +254,7 @@ function transformProps(members: any[]) {
     _.filter(isMemberhasDesginDecorator)
   )(members);
 
-  
-  function filterAndMapProps(prop: any) {
+  function filterAndMapProps(prop: any): sinaMeta.PropertyValue {
     return {
       name: prop.name,
       returnType: prop.type,
@@ -204,7 +270,7 @@ function transformProps(members: any[]) {
  * @param {*} member
  * @returns
  */
-function isMemberhasDesginDecorator(member: any) {
+function isMemberhasDesginDecorator(member: any): boolean {
   const decorators = member.decorators;
   return _.filter(isDesignDecorator)(decorators).length > 0;
 }

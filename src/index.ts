@@ -9,7 +9,7 @@ import path from "path";
 import _ from "lodash/fp";
 import fs from "fs";
 import { serializeDecoratorForSina } from "./decoratorSerialize";
-import { sinaTransformer } from "./metaTransformer";
+import { sinaTransformer, sinaMeta } from "./metaTransformer";
 import { genScriptContentFromVueLikeRawText, curryRight2 } from "./utils";
 
 const DECORATOR_NAME_OF_REF_CLASS = "dataType";
@@ -131,7 +131,7 @@ function isFilePath(path: string): boolean {
 export function customSerializeVueByDirectory(
   dirName: string,
   config: CustomSerializerConfigForDirectory
-): Promise<any> {
+): Promise<sinaMeta.TransfomedResult | any> {
   if (!isDir(dirName)) {
     throw new Error(`"${dirName}" does not exist or is not a directory.`);
   }
@@ -141,7 +141,7 @@ export function customSerializeVueByDirectory(
         reject(err);
       }
       const resolvedFilePath = files.map(file => path.resolve(file));
-      let output;
+      let output: any | sinaMeta.TransfomedResult;
       if (config.withSinaFormatTransformer) {
         output = customSerailizeVueFilesWithSinaFormat(
           resolvedFilePath,
