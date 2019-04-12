@@ -4,13 +4,13 @@ import {
   customEntryFilters
 } from "ts-meta-extract";
 import ts from "typescript";
-import { serializeDecoratorForSina } from "./decoratorSerialize";
-import { sinaTransformer } from "./metaTransformer";
-import { genScriptContentFromVueLikeRawText, curryRight2 } from "./utils";
 import glob from "glob";
 import path from "path";
 import _ from "lodash/fp";
 import fs from "fs";
+import { serializeDecoratorForSina } from "./decoratorSerialize";
+import { sinaTransformer } from "./metaTransformer";
+import { genScriptContentFromVueLikeRawText, curryRight2 } from "./utils";
 
 const DECORATOR_NAME_OF_REF_CLASS = "dataType";
 const PROPERTY_NAME = "code";
@@ -39,7 +39,7 @@ export function customSerailizeVueFilesWithSinaFormat(
 }
 
 /**
- *
+ * 
  *
  * @param {string[]} entries
  * @param {CustomSerializerConfig} config
@@ -61,6 +61,11 @@ function filterEntries(
   }
 }
 
+/**
+ * A file object.
+ *
+ * @interface File
+ */
 interface File {
   fileName: string;
   content: string;
@@ -105,7 +110,7 @@ function isFileContentValid(
    * @returns
    */
   function isScriptContainDecorator(decoratorName: string) {
-    return scriptContent.indexOf(decoratorName) > -1;
+    return scriptContent.indexOf(`@${decoratorName}`) > -1;
   }
 }
 

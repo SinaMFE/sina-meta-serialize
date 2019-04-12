@@ -139,7 +139,9 @@ function getDecoratorName(node: ts.Decorator): string {
  * Serialize object literal ts node into json object.
  *
  * NOTE: This will only serialize object literal with primitive type properties.
+ * Not in usage now.
  *
+ * @deprecated
  * @param {ts.ObjectLiteralExpression} node
  * @returns {string}
  */

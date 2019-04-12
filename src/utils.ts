@@ -5,13 +5,9 @@
  * @param {Function} func
  * @returns
  */
-export function curryRight2(func: Function) {
-  return function(arg2: any) {
-    return function(arg1: any) {
-      return func(arg1, arg2);
-    };
-  };
-}
+export const curryRight2 = <T, U, V>(func: (arg1: T, arg2: U) => V) => (
+  arg2: U
+) => (arg1: T): V => func(arg1, arg2);
 
 /**
  * Transform function into a curried function with 3 parameters.
@@ -20,15 +16,9 @@ export function curryRight2(func: Function) {
  * @param {Function} func
  * @returns
  */
-export function curryRight3(func: Function) {
-  return function(arg3: any) {
-    return function(arg2: any) {
-      return function(arg1: any) {
-        return func(arg1, arg2, arg3);
-      };
-    };
-  };
-}
+export const curryRight3 = <T, U, V, W>(
+  func: (arg1: T, arg2: U, arg3: V) => W
+) => (arg3: V) => (arg2: U) => (arg1: T): W => func(arg1, arg2, arg3);
 
 /**
  * This function may not work properly in some situations.
@@ -38,9 +28,7 @@ export function curryRight3(func: Function) {
  * @param content
  * @returns
  */
-export function genScriptContentFromVueLikeRawText(
-  content: string
-): string {
+export function genScriptContentFromVueLikeRawText(content: string): string {
   const openTagString = `<script lang="ts">`;
   const closeTagString = `</script>`;
   const start = content.indexOf(openTagString) + openTagString.length;
