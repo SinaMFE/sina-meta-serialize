@@ -6,7 +6,7 @@ To serialize dozens of vue files:
 ```javascript
 const {
   customSerializeVueFiles,
-} = require("@mfelibs/scp-meta-extract");
+} = require("sina-meta-serialize");
 const fs = require("fs");
 const path = require("path");
 const glob = require("glob");

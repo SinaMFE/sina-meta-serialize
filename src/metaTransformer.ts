@@ -26,7 +26,7 @@ export namespace sinaMeta {
      * @type {ClassMap}
      * @memberof TransfomedResult
      */
-    components: ClassMap
+    components: ClassMap;
   }
   export interface ClassMap {
     [className: string]: Class;
@@ -46,6 +46,7 @@ export namespace sinaMeta {
     returnType: string;
     isPrimitiveType: boolean;
     design: any;
+    isArray: boolean;
   }
 }
 
@@ -69,9 +70,7 @@ export function sinaTransformer(meta: any): sinaMeta.TransfomedResult {
   };
 }
 
-function collectComponents(
-  datalist: any[]
-): sinaMeta.ClassMap {
+function collectComponents(datalist: any[]): sinaMeta.ClassMap {
   const components = getAllComponents(datalist);
   return _.compose<any, any, any>(
     _.mapValues(_.head),
@@ -89,6 +88,7 @@ interface Prop {
   isPrimitiveType: boolean;
   name: string;
   returnType: string;
+  isArray: boolean;
 }
 
 /**
@@ -116,13 +116,21 @@ function transformComponentsTypeReferToDecoratorValue(
 
   function handleProps(prop: Prop) {
     let returnType = prop.returnType;
-    if (!prop.isPrimitiveType) {
-      returnType = findTypeStringtoDecoratorValue(prop.returnType, dataTypes);
+    if (!prop.isPrimitiveType && !isPrimitiveArrayTypeProp(prop)) {
+      // Despite situation of Array type and primitive type.
+      returnType = findTypeStringtoDecoratorValue(
+        prop.returnType,
+        dataTypes
+      );
     }
     return {
       ...prop,
       returnType
     };
+  }
+
+  function isPrimitiveArrayTypeProp(prop: Prop) {
+    return prop.isArray && isPrimitiveTypeByString(prop.returnType);
   }
 
   function findTypeStringtoDecoratorValue(
@@ -137,9 +145,7 @@ function transformComponentsTypeReferToDecoratorValue(
   }
 }
 
-function collectDataType(
-  datalist: any[]
-): sinaMeta.ClassMap {
+function collectDataType(datalist: any[]): sinaMeta.ClassMap {
   const dependencies = getAllDenpendecies(datalist);
   return _.compose<any, any, any, any>(
     _.mapValues(_.head),
@@ -149,9 +155,7 @@ function collectDataType(
   )(dependencies);
 }
 
-function transformComponent(
-  component: any
-): sinaMeta.Class {
+function transformComponent(component: any): sinaMeta.Class {
   // Components are unlike dependencies because deps need to be filtered.
   const name = getIdOfComponent(component);
   const props = transformProps(component.members);
@@ -250,6 +254,7 @@ function transformProps(members: any[]): sinaMeta.Property {
     _.mapValues(filterAndMapProps),
     _.mapValues(_.head),
     _.groupBy("name"),
+    _.map(transformReturnTypeIfArray),
     _.map(transformDecoratorForMember),
     _.filter(isMemberhasDesginDecorator)
   )(members);
@@ -257,11 +262,16 @@ function transformProps(members: any[]): sinaMeta.Property {
   function filterAndMapProps(prop: any): sinaMeta.PropertyValue {
     return {
       name: prop.name,
-      returnType: prop.type,
+      returnType: prop.returnType,
       isPrimitiveType: prop.isPrimitiveType,
+      isArray: prop.isArray,
       design: prop.design
     };
   }
+}
+
+function isPrimitiveTypeByString(type: string): boolean {
+  return type === "string" || type === "boolean" || type === "number";
 }
 
 /**
@@ -283,6 +293,15 @@ function isMemberhasDesginDecorator(member: any): boolean {
  */
 function isDesignDecorator(decorator: any) {
   return decorator.name === "Design";
+}
+
+function transformReturnTypeIfArray(member: any) {
+  let returnType = member.type;
+  if (member.isArray) {
+    returnType = member.genericTypeArgs[0];
+  }
+  member.returnType = returnType;
+  return member;
 }
 
 /**

@@ -35,6 +35,10 @@ export default class Card extends SPComponent {
         selector:"linkSelector"
     })
     mylink?:Link;
+
+    @Design
+    str: string[];
+    str1: Array<string>;
     mounted(){
         console.log("mounted");
     }
