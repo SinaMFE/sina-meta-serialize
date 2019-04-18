@@ -57,7 +57,7 @@ export function replaceTsScriptContentInVueLikeText(
   const {
     start: scriptStart,
     end: scriptEnd
-  } = getScriptStartAndEndOfVueLikeText(sourceText);
+  } = getScriptStartAndEndOfVueLikeTextByVueTemplateCompiler(sourceText);
   const header = sourceText.substring(0, scriptStart);
   const footer = sourceText.substring(scriptEnd);
   return `${header}${replaceScript}${footer}`;

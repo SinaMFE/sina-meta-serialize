@@ -17,5 +17,3 @@ const output = removeCompilationStageDecoratorsForVueFile(
 );
 
 console.log(output)
-
-debugger
