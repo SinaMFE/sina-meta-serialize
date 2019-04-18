@@ -2,12 +2,7 @@ import ts from "typescript";
 import { curryRight2, curryRight3 } from "./utils";
 import _ from "lodash/fp";
 
-const removeOptions = {
-  classElementDecorators: ["Design"],
-  classDecorators: ["SComponent"]
-};
-
-interface DeleteOptions {
+export interface DeleteOptions {
   classElementDecorators: string[];
   classDecorators: string[];
 }

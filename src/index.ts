@@ -8,9 +8,13 @@ import glob from "glob";
 import path from "path";
 import _ from "lodash/fp";
 import fs from "fs";
-import { serializeDecoratorForSina } from "./decoratorSerialize";
-import { sinaTransformer, sinaMeta } from "./metaTransformer";
-import { genScriptContentFromVueLikeRawText, curryRight2 } from "./utils";
+import { serializeDecoratorForSina } from "./decorator-serialize";
+import { sinaTransformer, sinaMeta } from "./meta-transformer";
+import { getTsScriptContentFromVueLikeRawText, replaceTsScriptContentInVueLikeText, curryRight2 } from "./utils";
+import {
+  removeCompilationStageDecorators,
+  DeleteOptions
+} from "./remove-decorator";
 
 const DECORATOR_NAME_OF_REF_CLASS = "dataType";
 const PROPERTY_NAME = "code";
@@ -23,6 +27,26 @@ export interface CustomSerializerConfig {
 export interface CustomSerializerConfigForDirectory
   extends CustomSerializerConfig {
   withSinaFormatTransformer?: boolean;
+}
+
+/**
+ * Remove 
+ *
+ * @export
+ * @param {string} vueSourceText
+ * @param {DeleteOptions} deleteOptions
+ * @returns {string}
+ */
+export function removeCompilationStageDecoratorsForVueFile(
+  vueSourceText: string,
+  deleteOptions: DeleteOptions
+): string {
+  if(!isFileContentValid(vueSourceText, deleteOptions.classDecorators)) {
+    return vueSourceText;
+  }
+  const scriptContent = getTsScriptContentFromVueLikeRawText(vueSourceText);
+  const scriptContentAfter = removeCompilationStageDecorators(scriptContent, deleteOptions);
+  return replaceTsScriptContentInVueLikeText(vueSourceText, scriptContentAfter);
 }
 
 export function customSerailizeVueFilesWithSinaFormat(
@@ -39,7 +63,7 @@ export function customSerailizeVueFilesWithSinaFormat(
 }
 
 /**
- * 
+ *
  *
  * @param {string[]} entries
  * @param {CustomSerializerConfig} config
@@ -100,7 +124,7 @@ function isFileContentValid(
   if (entryDecoratorFilters.length === 0) {
     return false;
   }
-  const scriptContent = genScriptContentFromVueLikeRawText(fileContent);
+  const scriptContent = getTsScriptContentFromVueLikeRawText(fileContent);
   return _.any(isScriptContainDecorator)(entryDecoratorFilters);
 
   /**

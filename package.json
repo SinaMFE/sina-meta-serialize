@@ -1,6 +1,6 @@
 {
   "name": "sina-meta-serialize",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "module": "dist/index.js",
   "main": "dist/index.js",
   "dependencies": {
@@ -16,6 +16,7 @@
     "typescript": "^3.4.1"
   },
   "peerDependencies": {
+    "vue-template-compiler": "^2.6.10",
     "typescript": "^3.4.1"
   },
   "scripts": {

@@ -13,10 +13,8 @@
     </section>
 </template>
 
-<script lang="ts">
-
-import {Link} from "./module"
-
+<script lang="ts"> 
+import {Link} from "./module" 
 enum inputType {
   text = 2,
   fds
