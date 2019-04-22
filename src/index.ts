@@ -10,9 +10,13 @@ import _ from "lodash/fp";
 import fs from "fs";
 import { serializeDecoratorForSina } from "./decorator-serialize";
 import { sinaTransformer, sinaMeta } from "./meta-transformer";
-import { getTsScriptContentFromVueLikeRawText, replaceTsScriptContentInVueLikeText, curryRight2 } from "./utils";
 import {
-  removeCompilationStageDecorators,
+  getTsScriptContentFromVueLikeRawText,
+  replaceTsScriptContentInVueLikeText,
+  curryRight2
+} from "./utils";
+import {
+  removeCompilationStageDecoratorsInTsText,
   DeleteOptions
 } from "./remove-decorator";
 
@@ -30,23 +34,47 @@ export interface CustomSerializerConfigForDirectory
 }
 
 /**
- * Remove 
+ * First check if there are any classes decorated by
+ * the decorators list in `deleteOptions.classDecorators` in the file.
+ * If not, skip it. Then determine if it is a vue SFC file, and if it is,
+ * then process it. Finally remove decorators.
  *
  * @export
- * @param {string} vueSourceText
+ * @param {string} sourceText
  * @param {DeleteOptions} deleteOptions
  * @returns {string}
  */
-export function removeCompilationStageDecoratorsForVueFile(
-  vueSourceText: string,
+export function removeCompilationStageDecorators(
+  sourceText: string,
   deleteOptions: DeleteOptions
 ): string {
-  if(!isFileContentValid(vueSourceText, deleteOptions.classDecorators)) {
-    return vueSourceText;
+  let returnText = sourceText;
+  if (
+    deleteOptions.isVueSFCSouce &&
+    isVueFileContentValid(sourceText, deleteOptions.classDecorators)
+  ) {
+    // Is a vue SFC.
+    const scriptContent = getTsScriptContentFromVueLikeRawText(sourceText);
+    const scriptContentAfter = removeCompilationStageDecoratorsInTsText(
+      scriptContent,
+      deleteOptions
+    );
+    returnText = replaceTsScriptContentInVueLikeText(
+      sourceText,
+      scriptContentAfter
+    );
+  } else if (
+    !deleteOptions.isVueSFCSouce &&
+    isTsFileContentValid(sourceText, deleteOptions.classDecorators)
+  ) {
+    // Is a typescript file.
+    returnText = removeCompilationStageDecoratorsInTsText(
+      sourceText,
+      deleteOptions
+    );
   }
-  const scriptContent = getTsScriptContentFromVueLikeRawText(vueSourceText);
-  const scriptContentAfter = removeCompilationStageDecorators(scriptContent, deleteOptions);
-  return replaceTsScriptContentInVueLikeText(vueSourceText, scriptContentAfter);
+  // Returns the original string if none of the conditions are met.
+  return returnText;
 }
 
 export function customSerailizeVueFilesWithSinaFormat(
@@ -81,7 +109,7 @@ function filterEntries(
 
   function isFileValid(file: File, entryDecoratorFilters: string[]): boolean {
     const { content } = file;
-    return isFileContentValid(content, entryDecoratorFilters);
+    return isVueFileContentValid(content, entryDecoratorFilters);
   }
 }
 
@@ -117,7 +145,7 @@ function getFileContentFromEntries(entries: string[]): File[] {
  * Simply use regular matching to preliminary determine whether file should be proccessed.
  *
  */
-function isFileContentValid(
+function isVueFileContentValid(
   fileContent: string,
   entryDecoratorFilters: string[]
 ): boolean {
@@ -125,6 +153,16 @@ function isFileContentValid(
     return false;
   }
   const scriptContent = getTsScriptContentFromVueLikeRawText(fileContent);
+  return isTsFileContentValid(scriptContent, entryDecoratorFilters);
+}
+
+function isTsFileContentValid(
+  scriptContent: string,
+  entryDecoratorFilters: string[]
+) {
+  if (entryDecoratorFilters.length === 0) {
+    return false;
+  }
   return _.any(isScriptContainDecorator)(entryDecoratorFilters);
 
   /**

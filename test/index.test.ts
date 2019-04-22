@@ -5,7 +5,7 @@ import {
   CustomSerializerConfig,
   CustomSerializerConfigForDirectory
 } from "../src/index";
-import { removeCompilationStageDecorators } from "../src/remove-decorator";
+import { removeCompilationStageDecoratorsInTsText } from "../src/remove-decorator";
 import path from "path";
 import fs from "fs";
 

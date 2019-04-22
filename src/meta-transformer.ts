@@ -116,17 +116,23 @@ function transformComponentsTypeReferToDecoratorValue(
 
   function handleProps(prop: Prop) {
     let returnType = prop.returnType;
-    if (!prop.isPrimitiveType && !isPrimitiveArrayTypeProp(prop)) {
+    if (
+      !prop.isPrimitiveType &&
+      !isBoxedObjectTypeProp(prop) &&
+      !isPrimitiveArrayTypeProp(prop)
+    ) {
       // Despite situation of Array type and primitive type.
-      returnType = findTypeStringtoDecoratorValue(
-        prop.returnType,
-        dataTypes
-      );
+      returnType = findTypeStringtoDecoratorValue(prop.returnType, dataTypes);
     }
     return {
       ...prop,
       returnType
     };
+  }
+
+  function isBoxedObjectTypeProp(prop: Prop): boolean {
+    const BOXED_OBJECT_STRING = ["Boolean", "String", "Number", "Object"];
+    return BOXED_OBJECT_STRING.indexOf(prop.returnType) > -1
   }
 
   function isPrimitiveArrayTypeProp(prop: Prop) {

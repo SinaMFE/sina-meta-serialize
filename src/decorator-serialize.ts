@@ -5,8 +5,36 @@ namespace symbolType {
   export function isClass(symbol: ts.Symbol) {
     return symbol.getFlags() === ts.SymbolFlags.Class;
   }
+  export function isInterface(symbol: ts.Symbol) {
+    return symbol.getFlags() === ts.SymbolFlags.Interface;
+  }
   export function isAlias(symbol: ts.Symbol) {
     return symbol.getFlags() === ts.SymbolFlags.Alias;
+  }
+}
+
+namespace nodeType {
+  export function isClassTypeIdentifier(
+    node: ts.Identifier,
+    checker: ts.TypeChecker
+  ) {
+    const type = checker.getTypeAtLocation(node);
+    const symbol = type.getSymbol();
+    if (symbol && symbolType.isClass(symbol)) {
+      return true;
+    }
+    return false;
+  }
+  export function isInterfaceTypeIdentifier(
+    node: ts.Identifier,
+    checker: ts.TypeChecker
+  ) {
+    const type = checker.getTypeAtLocation(node);
+    const symbol = type.getSymbol();
+    if (symbol && symbolType.isInterface(symbol)) {
+      return true;
+    }
+    return false;
   }
 }
 
@@ -166,62 +194,105 @@ function unstable_serializeObjectLiteral(
   checker: ts.TypeChecker,
   config: DecoratorSerializeConfig
 ): string {
+  // `accum` is a map for storing all serialized property in object literal.
   const accum = Object.create(null);
   node.properties.reduce((accum, propNode: ts.ObjectLiteralElementLike) => {
-    // Only support process property assignment because this is in compiling stage.
-    // And only literal because identify or method declaration or call expression can't be serialized.
-    // TODO: Consider the situation of object literal in property assignment.
-    if (
-      ts.isPropertyAssignment(propNode) &&
-      ts.isLiteralExpression(propNode.initializer) &&
-      !ts.isComputedPropertyName(propNode.name)
-    ) {
-      // Here every value is a `string` type, but in fact they can be numeric or string or boolean literal.
-      // If needed.
-      accum[propNode.name.getText()] = propNode.initializer.text;
+    if (ts.isPropertyAssignment(propNode)) {
+      // Only support process property assignment because this is in compiling stage.
+      // And only literal because identify, method declaration and call expression can't be serialized.
+      // TODO: Considering the situation of object literal in property assignment(nested problem).
+      return serializePropertyAssignmentOfObjectLiteral(
+        propNode,
+        accum,
+        checker,
+        config
+      );
+    }
+  }, accum);
+  return JSON.stringify(accum);
+}
+
+function serializePropertyAssignmentOfObjectLiteral(
+  propNode: ts.PropertyAssignment,
+  accum: any,
+  checker: ts.TypeChecker,
+  config: DecoratorSerializeConfig
+) {
+  const propertyName = propNode.name.getText();
+  if (
+    ts.isPropertyAssignment(propNode) &&
+    ts.isLiteralExpression(propNode.initializer) &&
+    !ts.isComputedPropertyName(propNode.name)
+  ) {
+    // Here every value is a `string` type, but in fact they can be numeric or string or boolean literal.
+    // If needed.
+    accum[propertyName] = propNode.initializer.text;
+  } else if (
+    ts.isPropertyAssignment(propNode) &&
+    ts.isIdentifier(propNode.initializer)
+  ) {
+    // Initializer is a identifier.
+    if (nodeType.isInterfaceTypeIdentifier(propNode.initializer, checker)) {
+      // Initializer is a `Interface` type.
+      // This serializes "Boolean", "String", "Number" as primitive types.
+      // Although in fact they are identifiers.
+      const initializer = propNode.initializer;
+      if (isStringBoxedObjectsOfPrimitiveType(initializer.text)) {
+        accum[propertyName] = initializer.text;
+      }
     } else if (
-      ts.isPropertyAssignment(propNode) &&
-      ts.isIdentifier(propNode.initializer) &&
+      nodeType.isClassTypeIdentifier(propNode.initializer, checker) &&
       config.serializeRefClass
     ) {
-      // Maybe initializer is a `Class`
+      // Property was assigned with a Class type.
+      // Maybe initializer is a `Class` type.
       const cls = serializeClassInitializerIfNeeded(
         propNode.initializer,
         checker,
         config.serializeRefClass
       );
       if (cls) {
-        accum[propNode.name.getText()] = cls;
-      }
-    } else if (
-      ts.isPropertyAssignment(propNode) &&
-      ts.isPropertyAccessExpression(propNode.initializer)
-    ) {
-      // Only serialize when initializer is a member of `Enum`
-      const enu = serializeEnumInitializerIfNeeded(
-        propNode.initializer,
-        checker
-      );
-      if (enu) {
-        accum[propNode.name.getText()] = enu;
+        accum[propertyName] = cls;
       }
     }
-    return accum;
-  }, accum);
-  return JSON.stringify(accum);
+  } else if (
+    ts.isPropertyAssignment(propNode) &&
+    ts.isPropertyAccessExpression(propNode.initializer)
+  ) {
+    // Is initializer a access expression.
+    // Only serialize when initializer is a member of `Enum`
+    const enu = serializeEnumInitializerIfNeeded(propNode.initializer, checker);
+    if (enu) {
+      accum[propertyName] = enu;
+    }
+  }
+  return accum;
+}
+
+/**
+ * Sina requires to treat non-primitive boxed objects types as primitive types and
+ * simply serialized to string.
+ * See more: https://www.typescriptlang.org/docs/handbook/declaration-files/do-s-and-don-ts.html
+ *
+ * @param {string} type
+ * @returns
+ */
+function isStringBoxedObjectsOfPrimitiveType(type: string) {
+  const BOXED_OBJECT_STRING = ["Boolean", "String", "Number", "Object"];
+  return BOXED_OBJECT_STRING.indexOf(type) > -1;
 }
 
 function serializeClassInitializerIfNeeded(
   node: ts.Identifier,
   checker: ts.TypeChecker,
-  serializeFunction: (node: ts.ClassDeclaration) => string | undefined
+  classNodeSerializeFunction: (node: ts.ClassDeclaration) => string | undefined
 ): string | undefined {
   const type = checker.getTypeAtLocation(node);
   const symbol = type.getSymbol();
   if (symbol && symbolType.isClass(symbol)) {
     // do sth...
     const classNode = symbol.valueDeclaration as ts.ClassDeclaration;
-    return serializeFunction(classNode);
+    return classNodeSerializeFunction(classNode);
   }
   return undefined;
 }
