@@ -1,6 +1,6 @@
 {
   "name": "sina-meta-serialize",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "module": "dist/index.js",
   "main": "dist/index.js",
   "dependencies": {

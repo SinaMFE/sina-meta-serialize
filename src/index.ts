@@ -33,6 +33,11 @@ export interface CustomSerializerConfigForDirectory
   withSinaFormatTransformer?: boolean;
 }
 
+export function removeCompilationStageDecoratorsForVueFile(sourceText: string, deleteOptions: DeleteOptions) {
+  deleteOptions.isVueSFCSouce = true;
+  return removeCompilationStageDecorators(sourceText, deleteOptions);
+}
+
 /**
  * First check if there are any classes decorated by
  * the decorators list in `deleteOptions.classDecorators` in the file.
