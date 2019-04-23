@@ -1,6 +1,6 @@
 {
   "name": "sina-meta-serialize",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "module": "dist/index.js",
   "main": "dist/index.js",
   "dependencies": {
@@ -9,15 +9,16 @@
     "@types/node": "^11.13.0",
     "glob": "^7.1.3",
     "lodash": "^4.17.11",
-    "ts-meta-extract": "^0.6.0"
+    "ts-meta-extract": "0.6.1"
   },
   "devDependencies": {
+    "vue-template-compiler": "^2.6.10",
     "ts-node": "^8.0.3",
     "typescript": "^3.4.1"
   },
   "peerDependencies": {
-    "vue-template-compiler": "^2.6.10",
-    "typescript": "^3.4.1"
+    "typescript": "^3.4.1",
+    "vue-template-compiler": "^2.6.10"
   },
   "scripts": {
     "prepublishOnly": "npm run compile",

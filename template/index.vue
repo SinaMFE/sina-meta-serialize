@@ -32,11 +32,12 @@ export default class Card extends SPComponent {
         description:"文章链接",
         selector:"linkSelector"
     })
-    mylink?:Link;
+    mylink?:Ha;
 
     @Design
     str: string[];
-    str1: Array<string>;
+    @Design
+    str1: Array<Link>;
     mounted(){
         console.log("mounted");
     }
