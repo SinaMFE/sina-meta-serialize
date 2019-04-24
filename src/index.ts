@@ -33,16 +33,28 @@ export interface CustomSerializerConfigForDirectory
   withSinaFormatTransformer?: boolean;
 }
 
+/**
+ * For backward compatibility.
+ * This api was once exposed.
+ *
+ * @deprecated
+ * @export
+ * @param {string} sourceText
+ * @param {DeleteOptions} deleteOptions
+ * @returns
+ */
 export function removeCompilationStageDecoratorsForVueFile(sourceText: string, deleteOptions: DeleteOptions) {
-  deleteOptions.isVueSFCSouce = true;
+  deleteOptions.isVueSFCSource = true;
   return removeCompilationStageDecorators(sourceText, deleteOptions);
 }
 
 /**
- * First check if there are any classes decorated by
- * the decorators list in `deleteOptions.classDecorators` in the file.
- * If not, skip it. Then determine if it is a vue SFC file, and if it is,
- * then process it. Finally remove decorators.
+ * Steps:
+ * 1. First check if there are any classes decorated by the decorators listed
+ *  in `deleteOptions.classDecorators` in the file.
+ * 2. If not, skip it.
+ * 3. Else then determine if it is a vue SFC file, and if it is then extract ts scripts. 
+ * 4. Finally remove decorators.
  *
  * @export
  * @param {string} sourceText
@@ -55,7 +67,7 @@ export function removeCompilationStageDecorators(
 ): string {
   let returnText = sourceText;
   if (
-    deleteOptions.isVueSFCSouce &&
+    deleteOptions.isVueSFCSource &&
     isVueFileContentValid(sourceText, deleteOptions.classDecorators)
   ) {
     // Is a vue SFC.
@@ -69,7 +81,7 @@ export function removeCompilationStageDecorators(
       scriptContentAfter
     );
   } else if (
-    !deleteOptions.isVueSFCSouce &&
+    !deleteOptions.isVueSFCSource &&
     isTsFileContentValid(sourceText, deleteOptions.classDecorators)
   ) {
     // Is a typescript file.

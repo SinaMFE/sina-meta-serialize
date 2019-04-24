@@ -5,7 +5,7 @@ import _ from "lodash/fp";
 export interface DeleteOptions {
   classElementDecorators: string[];
   classDecorators: string[];
-  isVueSFCSouce?: boolean;
+  isVueSFCSource?: boolean;
 }
 
 export function removeCompilationStageDecoratorsInTsText(
