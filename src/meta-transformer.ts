@@ -232,7 +232,14 @@ function isDepContainDataTypeDecorator(dep: any): boolean {
   return _.any((decorator: any) => decorator.name === "dataType")(decorators);
 }
 function transformSingleDep(dep: any): sinaMeta.Class {
-  const { decorators, members, name } = dep;
+  const { decorators, members, name, type } = dep;
+
+  let typeName = name;
+  if(name === "default") {
+    // This class is a default module export, thus it's name is `default`.
+    // Use type in `type` property instead.
+    typeName = _.compose(_.last, _.split("typeof "))(type);
+  }
 
   const nameInDecoratorValue = _.compose<any, any, any>(
     getDataTypeId,
@@ -245,7 +252,7 @@ function transformSingleDep(dep: any): sinaMeta.Class {
   return {
     name: nameInDecoratorValue,
     props,
-    originalTypeName: name
+    originalTypeName: typeName
   };
 }
 

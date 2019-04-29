@@ -15,6 +15,7 @@
 
 <script lang="ts"> 
 import {Link} from "./module" 
+import Fu from './module2';
 enum inputType {
   text = 2,
   fds
@@ -25,6 +26,8 @@ enum inputType {
     sversion:version
 })
 export default class Card extends SPComponent {
+    @Design
+    myFu: Fu;
     @Design({
         label:"文章链接",
         dataType:Link,
@@ -32,7 +35,7 @@ export default class Card extends SPComponent {
         description:"文章链接",
         selector:"linkSelector"
     })
-    mylink?:Ha;
+    mylink?:Link;
 
     @Design
     str: string[];

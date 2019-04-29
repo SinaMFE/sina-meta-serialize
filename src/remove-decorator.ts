@@ -17,7 +17,7 @@ export function removeCompilationStageDecoratorsInTsText(
 }
 
 function getDeletedSourceCode(source: string, ranges: ts.TextRange[]): string {
-  // Check if ranges have some errors during parsing.
+  // Check if ranges have errors during parsing(with same position).
   checkRanges(ranges);
   const sortedReversedRanges: ts.TextRange[] = _.compose<any, any>(
     _.reverse,
@@ -38,7 +38,7 @@ function checkRanges(ranges: ts.TextRange[]): void {
     const { pos } = range;
     if (map.has(pos)) {
       throw new Error(
-        "Parse error, finding plural range of same position. Please contact maintainer."
+        "Parse error, finding plural ranges of same position. Please contact maintainer."
       );
     } else {
       map.set(pos, undefined);
