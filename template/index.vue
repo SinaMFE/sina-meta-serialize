@@ -33,7 +33,9 @@ export default class Card extends SPComponent {
         dataType:Link,
         inputType:inputType.fds,
         description:"文章链接",
-        selector:"linkSelector"
+        selector:"linkSelector",
+        haha: true,
+        $rule_required: true,
     })
     mylink?:Link;
 

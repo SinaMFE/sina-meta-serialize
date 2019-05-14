@@ -1,7 +1,8 @@
 import ts from "typescript";
 import { curryRight3 } from "./utils";
 
-namespace symbolType {
+// Directly analyze type of a symbol object by `ts.SymbolFlags`.
+namespace SymbolType {
   export function isClass(symbol: ts.Symbol) {
     return symbol.getFlags() === ts.SymbolFlags.Class;
   }
@@ -13,14 +14,30 @@ namespace symbolType {
   }
 }
 
-namespace nodeType {
+// Includes functions that analyze sementic type of node.
+namespace NodeType {
+  export function isBooleanLiteralNode(node: ts.Node) {
+    return isTrueKeywordNode(node) || isFalseKeywordNode(node);
+  }
+  export function isTrueKeywordNode(node: ts.Node) {
+    return node.kind === ts.SyntaxKind.TrueKeyword;
+  }
+
+  export function isFalseKeywordNode(node: ts.Node) {
+    return node.kind === ts.SyntaxKind.FalseKeyword;
+  }
+}
+
+// Includes functions that analyze the symbol type of node.
+namespace NodeSymbolType {
+
   export function isClassTypeIdentifier(
     node: ts.Identifier,
     checker: ts.TypeChecker
   ) {
     const type = checker.getTypeAtLocation(node);
     const symbol = type.getSymbol();
-    if (symbol && symbolType.isClass(symbol)) {
+    if (symbol && SymbolType.isClass(symbol)) {
       return true;
     }
     return false;
@@ -31,7 +48,7 @@ namespace nodeType {
   ) {
     const type = checker.getTypeAtLocation(node);
     const symbol = type.getSymbol();
-    if (symbol && symbolType.isInterface(symbol)) {
+    if (symbol && SymbolType.isInterface(symbol)) {
       return true;
     }
     return false;
@@ -218,9 +235,12 @@ function serializePropertyAssignmentOfObjectLiteral(
   checker: ts.TypeChecker,
   config: DecoratorSerializeConfig
 ) {
+  // Only process property assignments.
+  if(!ts.isPropertyAssignment(propNode)) {
+    return accum
+  }
   const propertyName = propNode.name.getText();
   if (
-    ts.isPropertyAssignment(propNode) &&
     ts.isLiteralExpression(propNode.initializer) &&
     !ts.isComputedPropertyName(propNode.name)
   ) {
@@ -228,11 +248,10 @@ function serializePropertyAssignmentOfObjectLiteral(
     // If needed.
     accum[propertyName] = propNode.initializer.text;
   } else if (
-    ts.isPropertyAssignment(propNode) &&
     ts.isIdentifier(propNode.initializer)
   ) {
     // Initializer is a identifier.
-    if (nodeType.isInterfaceTypeIdentifier(propNode.initializer, checker)) {
+    if (NodeSymbolType.isInterfaceTypeIdentifier(propNode.initializer, checker)) {
       // Initializer is a `Interface` type.
       // This serializes "Boolean", "String", "Number" as primitive types.
       // Although in fact they are identifiers.
@@ -241,7 +260,7 @@ function serializePropertyAssignmentOfObjectLiteral(
         accum[propertyName] = initializer.text;
       }
     } else if (
-      nodeType.isClassTypeIdentifier(propNode.initializer, checker) &&
+      NodeSymbolType.isClassTypeIdentifier(propNode.initializer, checker) &&
       config.serializeRefClass
     ) {
       // Property was assigned with a Class type.
@@ -256,7 +275,6 @@ function serializePropertyAssignmentOfObjectLiteral(
       }
     }
   } else if (
-    ts.isPropertyAssignment(propNode) &&
     ts.isPropertyAccessExpression(propNode.initializer)
   ) {
     // Is initializer a access expression.
@@ -265,6 +283,10 @@ function serializePropertyAssignmentOfObjectLiteral(
     if (enu) {
       accum[propertyName] = enu;
     }
+  } else if (
+    NodeType.isBooleanLiteralNode(propNode.initializer)
+  ) {
+    accum[propertyName] = NodeType.isTrueKeywordNode(propNode.initializer) ? true : false;
   }
   return accum;
 }
@@ -289,7 +311,7 @@ function serializeClassInitializerIfNeeded(
 ): string | undefined {
   const type = checker.getTypeAtLocation(node);
   const symbol = type.getSymbol();
-  if (symbol && symbolType.isClass(symbol)) {
+  if (symbol && SymbolType.isClass(symbol)) {
     // do sth...
     const classNode = symbol.valueDeclaration as ts.ClassDeclaration;
     return classNodeSerializeFunction(classNode);
