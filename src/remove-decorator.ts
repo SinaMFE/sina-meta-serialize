@@ -120,24 +120,24 @@ function getTargetDecoratorNode(
   node: ts.ClassDeclaration | ts.ClassElement,
   decoratorNameList: string[]
 ): ts.Node[] {
-  let includedDecorators: ts.Node[] = [];
+  let targetDecorators: ts.Node[] = [];
   node.decorators &&
     node.decorators.forEach(decorator => {
       if (
         ts.isIdentifier(decorator.expression) &&
         decoratorNameList.indexOf(decorator.expression.text) > -1
       ) {
-        includedDecorators.push(decorator);
+        targetDecorators.push(decorator);
       } else if (
         ts.isCallExpression(decorator.expression) &&
         decoratorNameList.indexOf(
           (decorator.expression.expression as ts.Identifier).text
         ) > -1
       ) {
-        includedDecorators.push(decorator);
+        targetDecorators.push(decorator);
       }
     });
-  return includedDecorators;
+  return targetDecorators;
 }
 
 function getTextRangeFromNode(node: ts.Node): ts.TextRange {

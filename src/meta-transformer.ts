@@ -8,7 +8,7 @@ enum SComponentName {
 
 export namespace sinaMeta {
   /**
-   * The definition of transformed result of `sinaTransformer`.
+   * The declaration of transformed result of function `sinaTransformer()`.
    *
    * @export
    * @interface TransfomedResult

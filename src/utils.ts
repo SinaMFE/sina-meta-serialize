@@ -84,7 +84,7 @@ function getScriptStartAndEndOfVueLikeText(content: string): TextRange {
 function getScriptStartAndEndOfVueLikeTextByVueTemplateCompiler(
   content: string
 ): TextRange {
-  // Here use vue's template compiler for html parse.
+  // Use vue's template compiler for html parse.
   const { script } = parseComponent(content);
   if (script && script.lang === "ts") {
     if (!script.start || !script.end) {

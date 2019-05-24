@@ -14,7 +14,7 @@ namespace SymbolType {
   }
 }
 
-// Includes functions that analyze sementic type of node.
+// Includes functions that indicate semantic type of node.
 namespace NodeType {
   export function isBooleanLiteralNode(node: ts.Node) {
     return isTrueKeywordNode(node) || isFalseKeywordNode(node);
@@ -244,8 +244,8 @@ function serializePropertyAssignmentOfObjectLiteral(
     ts.isLiteralExpression(propNode.initializer) &&
     !ts.isComputedPropertyName(propNode.name)
   ) {
-    // Here every value is a `string` type, but in fact they can be numeric or string or boolean literal.
-    // If needed.
+    // Every node came into this branch is a `string` type node, but in 
+    // fact they can be numeric or string or boolean literal.
     accum[propertyName] = propNode.initializer.text;
   } else if (
     ts.isIdentifier(propNode.initializer)
