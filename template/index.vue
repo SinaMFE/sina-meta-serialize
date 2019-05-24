@@ -35,9 +35,17 @@ export default class Card extends SPComponent {
         description:"文章链接",
         selector:"linkSelector",
         haha: true,
+        rule: [{
+            $rule_max_length:10
+        },{
+            $rule_max_length:100
+        }],
         $rule_required: true,
+    }, {
+        label: "234",
+
     })
-    mylink?:Link;
+    mylink?: Link | string;
 
     @Design
     str: string[];

@@ -1,4 +1,5 @@
 import _ from "lodash/fp";
+import { serializer } from "ts-meta-extract";
 
 enum SComponentName {
   Version = "sversion",
@@ -42,11 +43,9 @@ export namespace sinaMeta {
   }
 
   export interface PropertyValue {
-    name: string;
-    returnType: string;
-    isPrimitiveType: boolean;
+    name: string | undefined;
+    returnType: serializer.SerializedType[] | serializer.SerializedType;
     design: any;
-    isArray: boolean;
   }
 }
 
@@ -80,18 +79,6 @@ function collectComponents(datalist: any[]): sinaMeta.ClassMap {
 }
 
 /**
- * Property item specified of each serialized class in final result files.
- *
- * @interface Prop
- */
-interface Prop {
-  isPrimitiveType: boolean;
-  name: string;
-  returnType: string;
-  isArray: boolean;
-}
-
-/**
  * Mainly handle the type reference of components' property, and use sina specified id
  * in decorator of class instead.
  *
@@ -114,29 +101,45 @@ function transformComponentsTypeReferToDecoratorValue(
     };
   }
 
-  function handleProps(prop: Prop) {
-    let returnType = prop.returnType;
-    if (
-      !prop.isPrimitiveType &&
-      !isBoxedObjectTypeProp(prop) &&
-      !isPrimitiveArrayTypeProp(prop)
-    ) {
-      // Despite situation of Array type and primitive type.
-      returnType = findTypeStringtoDecoratorValue(prop.returnType, dataTypes);
-    }
+  function handleProps(prop: sinaMeta.PropertyValue): sinaMeta.PropertyValue {
     return {
       ...prop,
-      returnType
+      returnType: Array.isArray(prop.returnType)
+        ? prop.returnType.map(handleReturnValue)
+        : handleReturnValue(prop.returnType)
     };
   }
 
-  function isBoxedObjectTypeProp(prop: Prop): boolean {
-    const BOXED_OBJECT_STRING = ["Boolean", "String", "Number", "Object"];
-    return BOXED_OBJECT_STRING.indexOf(prop.returnType) > -1
+  function handleReturnValue(type: serializer.SerializedType) {
+    let typeString = type.typeString;
+    if (
+      !type.isPrimitiveType &&
+      !isBoxedObjectType(type) &&
+      !isPrimitiveArrayType(type)
+    ) {
+      // Despite situation of Array type and primitive type.
+      if (!type.typeString) {
+        throw new Error(
+          `Error in transform type to class component identify decorator: \n` +
+            JSON.stringify(type) +
+            ";\nUnkonw type string."
+        );
+      }
+      typeString = findTypeStringtoDecoratorValue(type.typeString, dataTypes);
+    }
+    return {
+      ...type,
+      typeString
+    };
   }
 
-  function isPrimitiveArrayTypeProp(prop: Prop) {
-    return prop.isArray && isPrimitiveTypeByString(prop.returnType);
+  function isBoxedObjectType(prop: serializer.SerializedType): boolean {
+    const BOXED_OBJECT_STRING = ["Boolean", "String", "Number", "Object"];
+    return BOXED_OBJECT_STRING.indexOf(prop.typeString || "") > -1;
+  }
+
+  function isPrimitiveArrayType(prop: serializer.SerializedType) {
+    return prop.isArray && isPrimitiveTypeByString(prop.typeString || "");
   }
 
   function findTypeStringtoDecoratorValue(
@@ -235,10 +238,13 @@ function transformSingleDep(dep: any): sinaMeta.Class {
   const { decorators, members, name, type } = dep;
 
   let typeName = name;
-  if(name === "default") {
+  if (name === "default") {
     // This class is a default module export, thus it's name is `default`.
     // Use type in `type` property instead.
-    typeName = _.compose(_.last, _.split("typeof "))(type);
+    typeName = _.compose(
+      _.last,
+      _.split("typeof ")
+    )(type);
   }
 
   const nameInDecoratorValue = _.compose<any, any, any>(
@@ -262,25 +268,28 @@ function transformSingleDep(dep: any): sinaMeta.Class {
  * @param {any[]} members
  * @returns
  */
-function transformProps(members: any[]): sinaMeta.Property {
-  return _.compose<any, any, any, any, any, any>(
-    _.mapValues(filterAndMapProps),
-    _.mapValues(_.head),
-    _.groupBy("name"),
-    _.map(transformReturnTypeIfArray),
-    _.map(transformDecoratorForMember),
-    _.filter(isMemberhasDesginDecorator)
-  )(members);
-
-  function filterAndMapProps(prop: any): sinaMeta.PropertyValue {
+function transformProps(
+  members: serializer.SerializedSymbol[]
+): sinaMeta.Property {
+  const props = members.filter(isMemberhasDesginDecorator).map(member => {
+    const typeOfSymbol = member.type;
+    const design = transformDecoratorToDesignForMember(member);
+    // If a type is advanced type, it must have `childTypes`.
+    // Note: this step didn't consider situation that type itself an array type.
+    // If this kind of type should be supported, transformer should be redesigned.
+    const returnType = typeOfSymbol.typeOfAdvancedType
+      ? typeOfSymbol.childTypes!.map(transformReturnTypeForArrayType)
+      : typeOfSymbol;
     return {
-      name: prop.name,
-      returnType: prop.returnType,
-      isPrimitiveType: prop.isPrimitiveType,
-      isArray: prop.isArray,
-      design: prop.design
+      name: member.name,
+      returnType,
+      design
     };
-  }
+  });
+  return _.compose<any, any>(
+    _.mapValues(_.head),
+    _.groupBy("name")
+  )(props);
 }
 
 function isPrimitiveTypeByString(type: string): boolean {
@@ -308,13 +317,19 @@ function isDesignDecorator(decorator: any) {
   return decorator.name === "Design";
 }
 
-function transformReturnTypeIfArray(member: any) {
-  let returnType = member.type;
-  if (member.isArray) {
-    returnType = member.genericTypeArgs[0];
+/**
+ * Array was represented as an `Array` generic.
+ * So replace return type with first generic type if props is an array.
+ *
+ * @param {*} type
+ * @returns
+ */
+function transformReturnTypeForArrayType(type: any) {
+  let returnType = type;
+  if (type.isArray) {
+    returnType = type.genericTypeArgs[0];
   }
-  member.returnType = returnType;
-  return member;
+  return returnType;
 }
 
 /**
@@ -323,16 +338,15 @@ function transformReturnTypeIfArray(member: any) {
  * @param {*} member
  * @returns
  */
-function transformDecoratorForMember(member: any) {
+function transformDecoratorToDesignForMember(member: any) {
   const decorators = member.decorators;
   const transformedDecorator = _.compose<any, any, any>(
     _.head,
     _.compact,
     _.map(transformDecorator)
   )(decorators);
-  member.design = transformedDecorator;
 
-  return member;
+  return transformedDecorator;
 
   function transformDecorator(decorator: any) {
     const { name, args } = decorator;

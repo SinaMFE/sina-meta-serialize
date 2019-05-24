@@ -286,6 +286,12 @@ function serializePropertyAssignmentOfObjectLiteral(
   } else if (
     NodeType.isBooleanLiteralNode(propNode.initializer)
   ) {
+    // Example: 
+    // @Prop({
+    //   ... ,
+    //   booleanProp: true
+    // })
+    // propertyName: type;
     accum[propertyName] = NodeType.isTrueKeywordNode(propNode.initializer) ? true : false;
   }
   return accum;
