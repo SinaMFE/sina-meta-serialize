@@ -256,7 +256,7 @@ function serializePropertyAssignmentOfObjectLiteral(
       // This serializes "Boolean", "String", "Number" as primitive types.
       // Although in fact they are identifiers.
       const initializer = propNode.initializer;
-      if (isStringBoxedObjectsOfPrimitiveType(initializer.text)) {
+      if (isBoxedObjectsOfPrimitiveTypeString(initializer.text)) {
         accum[propertyName] = initializer.text;
       }
     } else if (
@@ -305,7 +305,7 @@ function serializePropertyAssignmentOfObjectLiteral(
  * @param {string} type
  * @returns
  */
-function isStringBoxedObjectsOfPrimitiveType(type: string) {
+function isBoxedObjectsOfPrimitiveTypeString(type: string) {
   const BOXED_OBJECT_STRING = ["Boolean", "String", "Number", "Object"];
   return BOXED_OBJECT_STRING.indexOf(type) > -1;
 }

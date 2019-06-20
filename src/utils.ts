@@ -22,6 +22,11 @@ export const curryRight3 = <T, U, V, W>(
   func: (arg1: T, arg2: U, arg3: V) => W
 ) => (arg3: V) => (arg2: U) => (arg1: T): W => func(arg1, arg2, arg3);
 
+/**
+ * Represent a text range by `start` and `end`.
+ *
+ * @interface TextRange
+ */
 interface TextRange {
   start: number;
   end: number;
