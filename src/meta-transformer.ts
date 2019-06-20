@@ -47,6 +47,14 @@ export namespace sinaMeta {
     returnType: serializer.SerializedType[] | serializer.SerializedType;
     design: any;
   }
+
+  export interface OLD_ProperyValue {
+    name: string | undefined;
+    returnType: string | undefined;
+    isPrimitiveType: boolean;
+    isArray: boolean;
+    design: any;
+  }
 }
 
 /**
@@ -63,10 +71,55 @@ export function sinaTransformer(meta: any): sinaMeta.TransfomedResult {
     components,
     dataTypes
   );
+  const oldDataTypes = processCompatibility(dataTypes);
+  const oldComponents = processCompatibility(processedComponents);
   return {
-    dataTypes,
-    components: processedComponents
+    dataTypes: oldDataTypes,
+    components: oldComponents
   };
+}
+
+/**
+ * In order to satisfy the old structure.
+ * If you can use a new structure to represent a complex type, you
+ * only need to delete the call to this function.
+ *
+ * @param {sinaMeta.ClassMap} map
+ * @returns
+ */
+function processCompatibility(map: sinaMeta.ClassMap) {
+  const output = _.mapValues(handleComponent)(map);
+  return output;
+
+  function handleComponent(components: sinaMeta.Class) {
+    const props = _.mapValues<any, any>(handleProps)(components.props);
+    return {
+      name: components.name,
+      props
+    };
+
+    /**
+     * In order to satisfy the old structure, the first type of the complex
+     * type such as the union type is taken as the final output type.
+     *
+     * @param {sinaMeta.PropertyValue} prop
+     * @returns {sinaMeta.OLD_ProperyValue}
+     */
+    function handleProps(
+      prop: sinaMeta.PropertyValue
+    ): sinaMeta.OLD_ProperyValue {
+      const returnTypeObject = Array.isArray(prop.returnType)
+        ? prop.returnType[0]
+        : prop.returnType;
+      const initial = {
+        ...prop,
+        returnType: returnTypeObject.typeString,
+        ...returnTypeObject
+      };
+      delete initial.typeString;
+      return initial;
+    }
+  }
 }
 
 function collectComponents(datalist: any[]): sinaMeta.ClassMap {
@@ -90,8 +143,8 @@ function transformComponentsTypeReferToDecoratorValue(
   components: sinaMeta.ClassMap,
   dataTypes: sinaMeta.ClassMap
 ): sinaMeta.ClassMap {
-  const output = _.mapValues<any, any>(handleComponent)(components);
-  return output;
+  const transformedComp = _.mapValues<any, any>(handleComponent)(components);
+  return transformedComp;
 
   function handleComponent(component: any) {
     const props = _.mapValues(handleProps)(component.props);
@@ -111,25 +164,44 @@ function transformComponentsTypeReferToDecoratorValue(
   }
 
   function handleReturnValue(type: serializer.SerializedType) {
-    let typeString = type.typeString;
+    let parsedTypeString = type.typeString;
+
+    // If a type is array type, use first generic type as type instead.
+    if (type.isArray) {
+      if (!type.genericTypeArgs || type.genericTypeArgs.length === 0) {
+        throw new Error(
+          `An error occurred during the parsing of the type ${
+            type.typeString
+          }: ` +
+            "the type is parsed as an array type, but the generic of the array cannot be found.\n" +
+            "Please contact the maintainer."
+        );
+      }
+      parsedTypeString = type.genericTypeArgs[0];
+    }
+
+    // If a type is a Class, transform the type identifier to its decorator id.
     if (
       !type.isPrimitiveType &&
       !isBoxedObjectType(type) &&
       !isPrimitiveArrayType(type)
     ) {
       // Despite situation of Array type and primitive type.
-      if (!type.typeString) {
+      if (!parsedTypeString) {
         throw new Error(
           `Error in transform type to class component identify decorator: \n` +
             JSON.stringify(type) +
             ";\nUnkonw type string."
         );
       }
-      typeString = findTypeStringtoDecoratorValue(type.typeString, dataTypes);
+      parsedTypeString = mapTypeStringToDecoratorIdVal(
+        parsedTypeString,
+        dataTypes
+      );
     }
     return {
       ...type,
-      typeString
+      typeString: parsedTypeString
     };
   }
 
@@ -139,13 +211,14 @@ function transformComponentsTypeReferToDecoratorValue(
   }
 
   function isPrimitiveArrayType(prop: serializer.SerializedType) {
-    return prop.isArray && isPrimitiveTypeByString(prop.typeString || "");
+    return (
+      prop.isArray &&
+      prop.genericTypeArgs &&
+      isPrimitiveTypeByString(prop.genericTypeArgs[0] || "")
+    );
   }
 
-  function findTypeStringtoDecoratorValue(
-    type: string,
-    dataTypes: any
-  ): string {
+  function mapTypeStringToDecoratorIdVal(type: string, dataTypes: any): string {
     const nameInDecoratorLiteral = _.compose(
       _.property("name"),
       _.find(_.matches({ originalTypeName: type }))
@@ -184,6 +257,7 @@ function transformComponent(component: any): sinaMeta.Class {
 
   /**
    * ?? Havenot implmented because is a runtime feature.
+   * WARNING: In fact this function can't be impled.
    *
    * @param {*} component
    * @returns
@@ -237,29 +311,52 @@ function isDepContainDataTypeDecorator(dep: any): boolean {
 function transformSingleDep(dep: any): sinaMeta.Class {
   const { decorators, members, name, type } = dep;
 
-  let typeName = name;
-  if (name === "default") {
-    // This class is a default module export, thus it's name is `default`.
-    // Use type in `type` property instead.
-    typeName = _.compose(
-      _.last,
-      _.split("typeof ")
-    )(type);
-  }
+  let typeName = getOriginalTypeName(dep);
 
-  const nameInDecoratorValue = _.compose<any, any, any>(
-    getDataTypeId,
-    _.head,
-    _.filter(isDataTypeDecorator)
-  )(decorators);
+  const nameInDecoratorValue = getNameInDecoratorVal(decorators);
 
   const props = transformProps(members);
-  // Original typeName is for postprocess to identify type reference of root class members.
+
   return {
+    // Use id in decorator to define a dependency instead of the parsed class name.
     name: nameInDecoratorValue,
     props,
+    // Original typeName is for postprocess to identify type reference of root class members.
     originalTypeName: typeName
   };
+
+  function getNameInDecoratorVal(decorators: any) {
+    return _.compose<any, any, any>(getDataTypeId, _.head, _.filter(isDataTypeDecorator))(decorators);
+  }
+
+  /**
+   * In ts, the default exported name is "default". Since complex types 
+   * are not supported, in order to find the original defined class name, 
+   * the first class of the complex type is taken first, and the defined 
+   * type name is obtained by string matching.
+   *
+   * @param {*} dep
+   * @returns
+   */
+  function getOriginalTypeName(dep: any) {
+    const { name, type } = dep;
+    let typeString;
+    if (Array.isArray(type)) {
+      typeString = type[0].typeString;
+    } else {
+      typeString = type.typeString;
+    }
+    let typeName = name;
+    if (name === "default") {
+      // This class is a default module export, thus it's name is `default`.
+      // Use type in `type` property instead.
+      typeName = _.compose(
+        _.last,
+        _.split("typeof ")
+      )(typeString);
+    }
+    return typeName;
+  }
 }
 
 /**
@@ -278,7 +375,7 @@ function transformProps(
     // Note: this step didn't consider situation that type itself an array type.
     // If this kind of type should be supported, transformer should be redesigned.
     const returnType = typeOfSymbol.typeOfAdvancedType
-      ? typeOfSymbol.childTypes!.map(transformReturnTypeForArrayType)
+      ? typeOfSymbol.childTypes
       : typeOfSymbol;
     return {
       name: member.name,
@@ -321,6 +418,7 @@ function isDesignDecorator(decorator: any) {
  * Array was represented as an `Array` generic.
  * So replace return type with first generic type if props is an array.
  *
+ * @deprecated Do this when mapping types.
  * @param {*} type
  * @returns
  */
