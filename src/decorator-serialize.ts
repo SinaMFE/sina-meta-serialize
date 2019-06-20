@@ -30,7 +30,6 @@ namespace NodeType {
 
 // Includes functions that analyze the symbol type of node.
 namespace NodeSymbolType {
-
   export function isClassTypeIdentifier(
     node: ts.Identifier,
     checker: ts.TypeChecker
@@ -236,63 +235,70 @@ function serializePropertyAssignmentOfObjectLiteral(
   config: DecoratorSerializeConfig
 ) {
   // Only process property assignments.
-  if(!ts.isPropertyAssignment(propNode)) {
-    return accum
+  if (!ts.isPropertyAssignment(propNode)) {
+    return accum;
   }
   const propertyName = propNode.name.getText();
+  const initializer = propNode.initializer;
+  let propertyValue;
   if (
-    ts.isLiteralExpression(propNode.initializer) &&
+    ts.isLiteralExpression(initializer) &&
     !ts.isComputedPropertyName(propNode.name)
   ) {
-    // Every node came into this branch is a `string` type node, but in 
-    // fact they can be numeric or string or boolean literal.
-    accum[propertyName] = propNode.initializer.text;
-  } else if (
-    ts.isIdentifier(propNode.initializer)
-  ) {
+    // Every node came into this branch is considered as a `string literal` type node,
+    // but in fact it can be numeric, string or boolean literal node.
+    // But to describe this detail, you need to change the structure and add
+    // more description fields.
+    propertyValue = initializer.text;
+  } else if (ts.isIdentifier(initializer)) {
     // Initializer is a identifier.
-    if (NodeSymbolType.isInterfaceTypeIdentifier(propNode.initializer, checker)) {
+    if (
+      NodeSymbolType.isInterfaceTypeIdentifier(initializer, checker)
+    ) {
       // Initializer is a `Interface` type.
       // This serializes "Boolean", "String", "Number" as primitive types.
       // Although in fact they are identifiers.
-      const initializer = propNode.initializer;
       if (isBoxedObjectsOfPrimitiveTypeString(initializer.text)) {
-        accum[propertyName] = initializer.text;
+        propertyValue = initializer.text;
       }
     } else if (
-      NodeSymbolType.isClassTypeIdentifier(propNode.initializer, checker) &&
+      NodeSymbolType.isClassTypeIdentifier(initializer, checker) &&
       config.serializeRefClass
     ) {
       // Property was assigned with a Class type.
       // Maybe initializer is a `Class` type.
       const cls = serializeClassInitializerIfNeeded(
-        propNode.initializer,
+        initializer,
         checker,
         config.serializeRefClass
       );
       if (cls) {
-        accum[propertyName] = cls;
+        propertyValue = cls;
       }
     }
-  } else if (
-    ts.isPropertyAccessExpression(propNode.initializer)
-  ) {
+  } else if (ts.isPropertyAccessExpression(initializer)) {
     // Is initializer a access expression.
     // Only serialize when initializer is a member of `Enum`
-    const enu = serializeEnumInitializerIfNeeded(propNode.initializer, checker);
+    const enu = serializeEnumInitializerIfNeeded(initializer, checker);
     if (enu) {
-      accum[propertyName] = enu;
+      propertyValue = enu;
     }
-  } else if (
-    NodeType.isBooleanLiteralNode(propNode.initializer)
-  ) {
-    // Example: 
+  } else if (NodeType.isBooleanLiteralNode(initializer)) {
+    // Example:
     // @Prop({
     //   ... ,
     //   booleanProp: true
     // })
     // propertyName: type;
-    accum[propertyName] = NodeType.isTrueKeywordNode(propNode.initializer) ? true : false;
+    propertyValue = NodeType.isTrueKeywordNode(initializer)
+      ? true
+      : false;
+  } else if (ts.isObjectLiteralExpression(initializer)) {
+    propertyValue = unstable_serializeObjectLiteral(initializer, checker, config);
+  }
+
+  if (propertyValue) {
+    accum[propertyName] = propertyValue;
   }
   return accum;
 }

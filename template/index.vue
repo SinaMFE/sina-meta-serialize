@@ -30,6 +30,7 @@ export default class Card extends SPComponent {
     myFu: Fu;
     @Design({
         label:"文章链接",
+        default:{ a:"432"},
         dataType:Link,
         inputType:inputType.fds,
         description:"文章链接",
