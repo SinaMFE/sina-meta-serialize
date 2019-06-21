@@ -1,7 +1,7 @@
 import _ from "lodash/fp";
 import { serializer } from "ts-meta-extract";
 
-enum SComponentName {
+enum SCompDecoratorProperty {
   Version = "sversion",
   Name = "sname"
 }
@@ -88,13 +88,14 @@ export function sinaTransformer(meta: any): sinaMeta.TransfomedResult {
  * @returns
  */
 function processCompatibility(map: sinaMeta.ClassMap) {
-  const output = _.mapValues(handleComponent)(map);
+  const output = _.mapValues(handleEachType)(map);
   return output;
 
-  function handleComponent(components: sinaMeta.Class) {
-    const props = _.mapValues<any, any>(handleProps)(components.props);
+  function handleEachType(type: sinaMeta.Class) {
+    const props = _.mapValues<any, any>(handleProps)(type.props);
+    // Filter out the original type name of type
     return {
-      name: components.name,
+      name: type.name,
       props
     };
 
@@ -252,7 +253,7 @@ function transformComponent(component: any): sinaMeta.Class {
   };
 
   function getIdOfComponent(component: any) {
-    return getParsedSComponentDecorator(component)[SComponentName.Name];
+    return getParsedSComponentDecorator(component)[SCompDecoratorProperty.Name];
   }
 
   /**
@@ -264,7 +265,7 @@ function transformComponent(component: any): sinaMeta.Class {
    */
   function getVersionOfComponent(component: any) {
     // Meaningless.
-    return getParsedSComponentDecorator(component)[SComponentName.Version];
+    return getParsedSComponentDecorator(component)[SCompDecoratorProperty.Version];
   }
 
   function getParsedSComponentDecorator(component: any) {
