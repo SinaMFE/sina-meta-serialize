@@ -1,10 +1,6 @@
 import _ from "lodash/fp";
 import { serializer } from "ts-meta-extract";
-
-enum SCompDecoratorProperty {
-  Version = "sversion",
-  Name = "sname"
-}
+import { setContext, getContext } from "./context";
 
 export namespace sinaMeta {
   /**
@@ -55,6 +51,10 @@ export namespace sinaMeta {
     isArray: boolean;
     design: any;
   }
+
+  export interface MetaTransformerHost {
+    getUniqueIdOfComponent(component: string): string;
+  }
 }
 
 /**
@@ -64,7 +64,13 @@ export namespace sinaMeta {
  * @param {*} meta
  * @returns
  */
-export function sinaTransformer(meta: any): sinaMeta.TransfomedResult {
+export function transformMeta(
+  meta: any,
+  metaTransformerHost: sinaMeta.MetaTransformerHost
+): sinaMeta.TransfomedResult {
+  // Set host to global context.
+  setContext(metaTransformerHost);
+
   const dataTypes = collectDataType(meta);
   const components = collectComponents(meta);
   const processedComponents = transformComponentsTypeReferToDecoratorValue(
@@ -171,9 +177,7 @@ function transformComponentsTypeReferToDecoratorValue(
     if (type.isArray) {
       if (!type.genericTypeArgs || type.genericTypeArgs.length === 0) {
         throw new Error(
-          `An error occurred during the parsing of the type ${
-            type.typeString
-          }: ` +
+          `An error occurred during the parsing of the type ${type.typeString}: ` +
             "the type is parsed as an array type, but the generic of the array cannot be found.\n" +
             "Please contact the maintainer."
         );
@@ -239,8 +243,9 @@ function collectDataType(datalist: any[]): sinaMeta.ClassMap {
 }
 
 function transformComponent(component: any): sinaMeta.Class {
+  const { getUniqueIdOfComponent } = getContext();
   // Components are unlike dependencies because deps need to be filtered.
-  const name = getIdOfComponent(component);
+  const name = getUniqueIdOfComponent(component);
   const props = transformProps(component.members);
   if (!name) {
     throw new Error(
@@ -251,44 +256,6 @@ function transformComponent(component: any): sinaMeta.Class {
     name,
     props
   };
-
-  function getIdOfComponent(component: any) {
-    return getParsedSComponentDecorator(component)[SCompDecoratorProperty.Name];
-  }
-
-  /**
-   * ?? Havenot implmented because is a runtime feature.
-   * WARNING: In fact this function can't be impled.
-   *
-   * @param {*} component
-   * @returns
-   */
-  function getVersionOfComponent(component: any) {
-    // Meaningless.
-    return getParsedSComponentDecorator(component)[SCompDecoratorProperty.Version];
-  }
-
-  function getParsedSComponentDecorator(component: any) {
-    const decorator = getDecoratorByName(component.decorators, "SComponent");
-    let out;
-    try {
-      out = _.compose<any, any, any, any, any>(
-        JSON.parse,
-        _.property("value"),
-        _.head,
-        _.property("args")
-      )(decorator);
-    } catch (e) {
-      throw new Error(
-        `Cannot get valid meta data for SComponent decorator of class ${component}`
-      );
-    }
-    return out;
-  }
-}
-
-function getDecoratorByName(decorators: any[], name: string) {
-  return _.find(_.matches({ name }), decorators);
 }
 
 function transformDataType(dep: any): sinaMeta.Class | undefined {
@@ -327,13 +294,17 @@ function transformSingleDep(dep: any): sinaMeta.Class {
   };
 
   function getNameInDecoratorVal(decorators: any) {
-    return _.compose<any, any, any>(getDataTypeId, _.head, _.filter(isDataTypeDecorator))(decorators);
+    return _.compose<any, any, any>(
+      getDataTypeId,
+      _.head,
+      _.filter(isDataTypeDecorator)
+    )(decorators);
   }
 
   /**
-   * In ts, the default exported name is "default". Since complex types 
-   * are not supported, in order to find the original defined class name, 
-   * the first class of the complex type is taken first, and the defined 
+   * In ts, the default exported name is "default". Since complex types
+   * are not supported, in order to find the original defined class name,
+   * the first class of the complex type is taken first, and the defined
    * type name is obtained by string matching.
    *
    * @param {*} dep

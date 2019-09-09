@@ -22,7 +22,7 @@
   },
   "scripts": {
     "prepublishOnly": "npm run compile",
-    "compile": "tsc",
+    "compile": "rm -rf ./dist && tsc",
     "test": "ts-node test/index.test.ts"
   }
 }

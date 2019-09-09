@@ -9,7 +9,7 @@ import path from "path";
 import _ from "lodash/fp";
 import fs from "fs";
 import { serializeDecoratorForSina } from "./decorator-serialize";
-import { sinaTransformer, sinaMeta } from "./meta-transformer";
+import { transformMetaForPage, transfomrMetaForComp, sinaMeta } from './meta-transformer';
 import {
   getTsScriptContentFromVueLikeRawText,
   replaceTsScriptContentInVueLikeText,
@@ -24,13 +24,45 @@ const DECORATOR_NAME_OF_REF_CLASS = "dataType";
 const PROPERTY_NAME = "code";
 
 export interface CustomSerializerConfig {
+  /**
+   * Determine if it is an entry declaration class that needs to extract metadata.
+   *
+   * @type {string[]}
+   * @memberof CustomSerializerConfig
+   */
   entryDecoratorFilters: string[];
+  /**
+   * Specify the relevant decorator name that needs to be serialized.
+   *
+   * @type {string[]}
+   * @memberof CustomSerializerConfig
+   */
   serializeDecoratorNameList: string[];
 }
 
 export interface CustomSerializerConfigForDirectory
   extends CustomSerializerConfig {
   withSinaFormatTransformer?: boolean;
+  /**
+   * The serialization target, should be `page` or `component`.
+   *
+   * @type {SerializeType}
+   * @memberof CustomSerializerConfigForDirectory
+   */
+  serializeType: SerializeType;
+  /**
+   * If the serialization target is a `page`, you need to specify a specific
+   * page (that is, the name of the subfile directory in the __views__ folder).
+   *
+   * @type {string}
+   * @memberof CustomSerializerConfigForDirectory
+   */
+  viewDirname?: string;
+}
+
+export enum SerializeType {
+  Component = "component",
+  Page = "page"
 }
 
 /**
@@ -43,7 +75,10 @@ export interface CustomSerializerConfigForDirectory
  * @param {DeleteOptions} deleteOptions
  * @returns
  */
-export function removeCompilationStageDecoratorsForVueFile(sourceText: string, deleteOptions: DeleteOptions) {
+export function removeCompilationStageDecoratorsForVueFile(
+  sourceText: string,
+  deleteOptions: DeleteOptions
+) {
   deleteOptions.isVueSFCSource = true;
   return removeCompilationStageDecorators(sourceText, deleteOptions);
 }
@@ -53,7 +88,7 @@ export function removeCompilationStageDecoratorsForVueFile(sourceText: string, d
  * 1. First check if there are any classes decorated by the decorators listed
  *  in `deleteOptions.classDecorators` in the file.
  * 2. If not, skip it.
- * 3. Else then determine if it is a vue SFC file, and if it is then extract ts scripts. 
+ * 3. Else then determine if it is a vue SFC file, and if it is then extract ts scripts.
  * 4. Finally remove decorators.
  *
  * @export
@@ -96,15 +131,24 @@ export function removeCompilationStageDecorators(
 
 export function customSerailizeVueFilesWithSinaFormat(
   entries: string[],
-  config: CustomSerializerConfig
+  config: CustomSerializerConfig,
+  serializeType: SerializeType
 ) {
   const validEntries = filterEntries(entries, config);
   if (validEntries.length === 0) {
     // No file to be processed.
     return undefined;
   }
-  const output = customSerializeVueFiles(validEntries, config);
-  return sinaTransformer(output);
+  const output = customSerializeVueFiles(validEntries, config, serializeType);
+  return transformMeta(output, serializeType);
+}
+
+function transformMeta(originalMeta: any[], serializeType: SerializeType) {
+  if(serializeType === SerializeType.Component) {
+    return transfomrMetaForComp(originalMeta);
+  } else {
+    return transformMetaForPage(originalMeta);
+  }
 }
 
 /**
@@ -201,37 +245,83 @@ function isFilePath(path: string): boolean {
 }
 
 /**
- * Accept a directory path and process all `.vue` files in it.
+ * Accept a root source file directory path of marauder and process all `.vue` 
+ * files in it, which will be directory `src` In marauder project.
  *
  * @export
- * @param {string} dirName
+ * @param {string} rootDir
  * @returns
  */
-export function customSerializeVueByDirectory(
-  dirName: string,
+export async function customSerializeVueByDirectory(
+  rootDir: string,
   config: CustomSerializerConfigForDirectory
 ): Promise<sinaMeta.TransfomedResult | any> {
-  if (!isDir(dirName)) {
-    throw new Error(`"${dirName}" does not exist or is not a directory.`);
+  if (!isDir(rootDir)) {
+    throw new Error(`"${rootDir}" does not exist or is not a directory.`);
   }
-  return new Promise((resvole, reject) => {
-    glob(`${dirName}/**/*.vue`, function(err, files) {
-      if (err) {
-        reject(err);
-      }
-      const resolvedFilePath = files.map(file => path.resolve(file));
-      let output: any | sinaMeta.TransfomedResult;
-      if (config.withSinaFormatTransformer) {
-        output = customSerailizeVueFilesWithSinaFormat(
-          resolvedFilePath,
-          config
-        );
-      } else {
-        output = customSerializeVueFiles(resolvedFilePath, config);
-      }
-      resvole(output);
+
+  if (config.serializeType === SerializeType.Component) {
+    return serializeComponent(rootDir, config);
+  } else {
+    return serializePage(rootDir, config);
+  }
+
+  function serializePage(
+    rootDir: string,
+    config: CustomSerializerConfigForDirectory
+  ) {
+    const viewDirname = config.viewDirname;
+    if (!viewDirname || !_.isString(viewDirname)) {
+      throw new Error(
+        `A "viewDirname" must be set in config when serialize meta data of a page.`
+      );
+    }
+    const rootDirOfPage = `${rootDir}/views/${viewDirname}`;
+
+    if (!isDir(rootDirOfPage)) {
+      throw new Error(
+        `"${rootDirOfPage}" does not exist or is not a directory.`
+      );
+    }
+
+    return serializeByDir(`${rootDirOfPage}/**/*.vue`, config);
+  }
+
+  async function serializeComponent(
+    rootDir: string,
+    config: CustomSerializerConfigForDirectory
+  ) {
+    return serializeByDir(`${rootDir}/**/*.vue`, config);
+  }
+
+  async function serializeByDir(
+    dir: string,
+    config: CustomSerializerConfigForDirectory
+  ) {
+    return new Promise((resvole, reject) => {
+      glob(dir, function(err, files) {
+        if (err) {
+          reject(err);
+        }
+        const resolvedFilePath = files.map(file => path.resolve(file));
+        let output: any | sinaMeta.TransfomedResult;
+        if (config.withSinaFormatTransformer) {
+          output = customSerailizeVueFilesWithSinaFormat(
+            resolvedFilePath,
+            config,
+            config.serializeType
+          );
+        } else {
+          output = customSerializeVueFiles(
+            resolvedFilePath,
+            config,
+            config.serializeType
+          );
+        }
+        resvole(output);
+      });
     });
-  });
+  }
 }
 
 /**
@@ -262,19 +352,58 @@ export function customSerializeTsFiles(
 
 export function customSerializeVueFiles(
   entries: string[],
-  config: CustomSerializerConfig
+  config: CustomSerializerConfig,
+  serializeType: SerializeType
 ) {
-  const output = serializeVueFiles(entries, {
-    classEntryFilter: customEntryFilters.isDecoratedBy(
-      config.entryDecoratorFilters
-    ),
-    serializeDecorator: serializeDecoratorForSina({
-      decoratorNameList: config.serializeDecoratorNameList,
-      serializeRefClass
-    })
-  });
+  let output;
+
+  // The serialization difference between component and page is currently
+  // based on the judgment of the entry classnode.
+  if (serializeType === SerializeType.Component) {
+    output = serializeVueFiles(entries, {
+      classEntryFilter: customEntryFilters.isDecoratedBy(
+        config.entryDecoratorFilters
+      ),
+      serializeDecorator: serializeDecoratorForSina({
+        decoratorNameList: config.serializeDecoratorNameList,
+        serializeRefClass
+      })
+    });
+  } else {
+    output = serializeVueFiles(entries, {
+      classEntryFilter: isValidSeriEntryOfPage,
+      serializeDecorator: serializeDecoratorForSina({
+        decoratorNameList: config.serializeDecoratorNameList,
+        serializeRefClass
+      })
+    });
+  }
 
   return output;
+
+  function isValidSeriEntryOfPage(classNode: ts.ClassDeclaration): boolean {
+    return (
+      customEntryFilters.isDecoratedBy(config.entryDecoratorFilters)(
+        classNode
+      ) && isDefaultExport(classNode)
+    );
+  }
+
+  function isDefaultExport(node: ts.ClassDeclaration): boolean {
+    const modifiers = node.modifiers;
+
+    let hasExportKeyword;
+    let hasDefaultKeyword;
+    modifiers &&
+      modifiers.forEach(mod => {
+        if (mod.kind === ts.SyntaxKind.ExportKeyword) {
+          hasExportKeyword = true;
+        } else {
+          hasDefaultKeyword = true;
+        }
+      });
+    return !!(hasExportKeyword && hasDefaultKeyword);
+  }
 }
 
 /**
