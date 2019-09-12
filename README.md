@@ -48,6 +48,32 @@ async function main() {
 }
 ```
 
+If you are serializing a page (not component), you should use:
+
+```javascript
+const { customSerializeVueByDirectory } = require('sina-meta-serialize');
+const fs = require('fs');
+const path = require('path');
+
+const config = {
+  serializeDecoratorNameList: ['Spage', 'Design', 'dataType'],
+  entryDecoratorFilters: ['Spage'],
+  withSinaFormatTransformer: true,
+  viewDirname: 'taskEnvelop',
+  serializeType: 'page'
+};
+
+main();
+
+async function main() {
+  const output = await customSerializeVueByDirectory(path.join(__dirname, './src'), config);
+  fs.writeFileSync('./result.json', JSON.stringify(output, undefined, 2));
+}
+
+```
+
+The `serializeType` indicates type of this serialization, it can be either `"page"` or `"component"`, and you should also offer a `viewDirname` property to tell which child folder the serialization excutes if you are serializing a page.
+
 ## Interface
 
 **customSerializeVueByDirectory**`(path, config)`accept a directory path and process all vue files in it. Parameter `path` is the location of target directory. Parameter `config` is some configuration to specify serialization functions.
