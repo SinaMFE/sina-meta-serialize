@@ -31,7 +31,8 @@ enum inputType {
 
 @SComponent({
   sname: "testmyonly-comp",
-  sversion: version
+  sversion: version,
+  stitle: "测试title"
 })
 export default class Card extends SPComponent {
   @Design

@@ -1,16 +1,48 @@
 import _ from "lodash/fp";
 
-enum SCompDecoratorProperty {
+let phid = 0;
+
+enum DecoratorPropertyKeyname {
   Version = "sversion",
-  Name = "sname"
+  Name = "sname",
+  Title = "stitle"
+}
+
+const COMP_ROOT_CLASS_DECO = "SComponent";
+
+const PAGE_ROOT_CLASS_DECO = "Spage";
+
+export function getCompTitle(component: any) {
+  const decorator = getComponentDecoratorByName(
+    component,
+    COMP_ROOT_CLASS_DECO
+  );
+
+  return decorator[DecoratorPropertyKeyname.Title];
+}
+
+export function getPageTitle(component: any) {
+  const deco = getComponentDecoratorByName(component, PAGE_ROOT_CLASS_DECO);
+
+  return deco[DecoratorPropertyKeyname.Title];
 }
 
 export function getIdOfPage(component: any) {
-  return "placeholder";
+  return "placeholder-$" + phid++;
 }
 
 export function getIdOfComponent(component: any) {
-  return getParsedSComponentDecorator(component)[SCompDecoratorProperty.Name];
+  const name = getComponentDecoratorByName(component, COMP_ROOT_CLASS_DECO)[
+    DecoratorPropertyKeyname.Name
+  ];
+  if (!name) {
+    throw new Error(
+      `\nCannot get unique id from "SComponent" decorator from class declaration ${component}.\n` +
+        `Please check that the serialization target is decorated by "SComponent" correctly, ` +
+        `and the argument contains "${DecoratorPropertyKeyname.Name}" property.`
+    );
+  }
+  return name;
 }
 
 /**
@@ -22,13 +54,13 @@ export function getIdOfComponent(component: any) {
  */
 export function getVersionOfComponent(component: any) {
   // Meaningless.
-  return getParsedSComponentDecorator(component)[
-    SCompDecoratorProperty.Version
+  return getComponentDecoratorByName(component, COMP_ROOT_CLASS_DECO)[
+    DecoratorPropertyKeyname.Version
   ];
 }
 
-function getParsedSComponentDecorator(component: any) {
-  const decorator = getDecoratorByName(component.decorators, "SComponent");
+function getComponentDecoratorByName(component: any, decName: string) {
+  const decorator = getDecoratorByName(component.decorators, decName);
   let out;
   try {
     out = _.compose<any, any, any, any, any>(
@@ -39,12 +71,12 @@ function getParsedSComponentDecorator(component: any) {
     )(decorator);
   } catch (e) {
     throw new Error(
-      `Cannot get valid meta data for SComponent decorator of class:\n` +
+      `Cannot get valid meta data in ${decName} decorator of class:\n` +
         `See detail: \n ${JSON.stringify(component)}\n` +
-        `Please check that you have installed and referenced dependencies correctly` +
-        `and all referenced classes are decorated by "Scomponent"`
+        `\nPlease check that the serialization target is decorated by "${decName}" correctly\n`
     );
   }
+
   return out;
 }
 

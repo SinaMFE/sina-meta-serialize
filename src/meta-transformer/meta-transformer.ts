@@ -13,23 +13,24 @@ export namespace sinaMeta {
     /**
      * Mainly are the dependencies of `components`.
      *
-     * @type {ClassMap}
+     * @type {ClassMetaMap}
      * @memberof TransfomedResult
      */
-    dataTypes: ClassMap;
+    dataTypes: ClassMetaMap;
     /**
      * Components of sina project.
      *
-     * @type {ClassMap}
+     * @type {ClassMetaMap}
      * @memberof TransfomedResult
      */
-    components: ClassMap;
+    components: ClassMetaMap;
   }
-  export interface ClassMap {
-    [className: string]: Class;
+  export interface ClassMetaMap {
+    [className: string]: ClassMeta;
   }
-  export interface Class {
+  export interface ClassMeta {
     name: string;
+    title?: string;
     props: Property;
     originalTypeName?: string;
   }
@@ -53,7 +54,8 @@ export namespace sinaMeta {
   }
 
   export interface MetaTransformerHost {
-    getUniqueIdOfComponent(component: string): string;
+    getUniqueIdOfRootClass(component: any): string;
+    getTitleOfRootClass(component: any): string;
   }
 }
 
@@ -90,18 +92,19 @@ export function transformMeta(
  * If you can use a new structure to represent a complex type, you
  * only need to delete the call to this function.
  *
- * @param {sinaMeta.ClassMap} map
+ * @param {sinaMeta.ClassMetaMap} map
  * @returns
  */
-function processCompatibility(map: sinaMeta.ClassMap) {
+function processCompatibility(map: sinaMeta.ClassMetaMap) {
   const output = _.mapValues(handleEachType)(map);
   return output;
 
-  function handleEachType(type: sinaMeta.Class) {
+  function handleEachType(type: sinaMeta.ClassMeta) {
     const props = _.mapValues<any, any>(handleProps)(type.props);
     // Filter out the original type name of type
     return {
       name: type.name,
+      title: type.title,
       props
     };
 
@@ -129,7 +132,7 @@ function processCompatibility(map: sinaMeta.ClassMap) {
   }
 }
 
-function collectComponents(datalist: any[]): sinaMeta.ClassMap {
+function collectComponents(datalist: any[]): sinaMeta.ClassMetaMap {
   const components = getAllComponents(datalist);
   return _.compose<any, any, any>(
     _.mapValues(_.head),
@@ -147,9 +150,9 @@ function collectComponents(datalist: any[]): sinaMeta.ClassMap {
  * @returns
  */
 function transformComponentsTypeReferToDecoratorValue(
-  components: sinaMeta.ClassMap,
-  dataTypes: sinaMeta.ClassMap
-): sinaMeta.ClassMap {
+  components: sinaMeta.ClassMetaMap,
+  dataTypes: sinaMeta.ClassMetaMap
+): sinaMeta.ClassMetaMap {
   const transformedComp = _.mapValues<any, any>(handleComponent)(components);
   return transformedComp;
 
@@ -232,7 +235,7 @@ function transformComponentsTypeReferToDecoratorValue(
   }
 }
 
-function collectDataType(datalist: any[]): sinaMeta.ClassMap {
+function collectDataType(datalist: any[]): sinaMeta.ClassMetaMap {
   const dependencies = getAllDenpendecies(datalist);
   return _.compose<any, any, any, any>(
     _.mapValues(_.head),
@@ -242,23 +245,38 @@ function collectDataType(datalist: any[]): sinaMeta.ClassMap {
   )(dependencies);
 }
 
-function transformComponent(component: any): sinaMeta.Class {
-  const { getUniqueIdOfComponent } = getContext();
+function transformComponent(component: any): sinaMeta.ClassMeta {
+  const { getUniqueIdOfRootClass, getTitleOfRootClass } = getContext();
   // Components are unlike dependencies because deps need to be filtered.
-  const name = getUniqueIdOfComponent(component);
+  const name = getUniqueIdOfRootClass(component);
+  const title = getTitleOfRootClass(component);
   const props = transformProps(component.members);
   if (!name) {
     throw new Error(
-      `Cannot get "name" from "SComponent" decorator from class declaration ${component}.`
+      `Transformer cannot get unique id for class.\n See detail: ${JSON.stringify(component)}.`
+    );
+  }
+
+  if(!title) {
+    throw new Error(
+      `Transformer cannot get title for class: ${name}.`
     );
   }
   return {
     name,
+    title,
     props
   };
 }
 
-function transformDataType(dep: any): sinaMeta.Class | undefined {
+/**
+ * Transform the original meta data of an dependency (which in sina's form should be 
+ * decorated by `Datatype` decorator) into the form of sina.
+ *
+ * @param {*} dep
+ * @returns {(sinaMeta.ClassMeta | undefined)}
+ */
+function transformDataType(dep: any): sinaMeta.ClassMeta | undefined {
   if (isDepContainDataTypeDecorator(dep)) {
     const out = transformSingleDep(dep);
     if (!out.name) {
@@ -276,7 +294,7 @@ function isDepContainDataTypeDecorator(dep: any): boolean {
   const { decorators } = dep;
   return _.any((decorator: any) => decorator.name === "dataType")(decorators);
 }
-function transformSingleDep(dep: any): sinaMeta.Class {
+function transformSingleDep(dep: any): sinaMeta.ClassMeta {
   const { decorators, members, name, type } = dep;
 
   let typeName = getOriginalTypeName(dep);
@@ -302,9 +320,9 @@ function transformSingleDep(dep: any): sinaMeta.Class {
   }
 
   /**
-   * In ts, the default exported name is "default". Since complex types
-   * are not supported, in order to find the original defined class name,
-   * the first class of the complex type is taken first, and the defined
+   * In ts, the default exported name is "default". 
+   * Since complex types are not supported, in order to find the original defined 
+   * class name, the first class of the complex type is taken first, and the defined
    * type name is obtained by string matching.
    *
    * @param {*} dep
@@ -459,7 +477,8 @@ function getDataTypeId(decorator: any) {
 }
 
 /**
- * Get all Dependencies from a data list, which is produced by meta extractor.
+ * Get all Dependencies from a data list, which is produced by meta serializer.
+ * Every item in `datalist` is the meta data of a single file.
  *
  * @param {any[]} dataList
  * @returns
