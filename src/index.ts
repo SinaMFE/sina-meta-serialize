@@ -9,7 +9,11 @@ import path from "path";
 import _ from "lodash/fp";
 import fs from "fs";
 import { serializeDecoratorForSina } from "./decorator-serialize";
-import { transformMetaForPage, transfomrMetaForComp, sinaMeta } from './meta-transformer';
+import {
+  transformMetaForPage,
+  transfomrMetaForComp,
+  sinaMeta
+} from "./meta-transformer";
 import {
   getTsScriptContentFromVueLikeRawText,
   replaceTsScriptContentInVueLikeText,
@@ -129,11 +133,40 @@ export function removeCompilationStageDecorators(
   return returnText;
 }
 
+/**
+ * This implementation is for inner usage.
+ *
+ * @export
+ * @param {string[]} entries
+ * @param {CustomSerializerConfig} config
+ * @param {SerializeType} [serializeType]
+ * @returns {*}
+ */
 export function customSerailizeVueFilesWithSinaFormat(
   entries: string[],
   config: CustomSerializerConfig,
-  serializeType: SerializeType
+  serializeType?: SerializeType
+): any;
+
+export function customSerailizeVueFilesWithSinaFormat(
+  entries: string[],
+  config: CustomSerializerConfigForDirectory
+): any;
+
+export function customSerailizeVueFilesWithSinaFormat(
+  entries: string[],
+  config: CustomSerializerConfig | CustomSerializerConfigForDirectory,
+  serializeType?: SerializeType
 ) {
+  if (!serializeType) {
+    if (!("serializeType" in config)) {
+      throw new Error(
+        `The "serializeType" should be specified in config to indicate a "component" or "page" extraction.`
+      );
+    }
+    serializeType = config.serializeType;
+  }
+
   const validEntries = filterEntries(entries, config);
   if (validEntries.length === 0) {
     // No file to be processed.
@@ -144,7 +177,7 @@ export function customSerailizeVueFilesWithSinaFormat(
 }
 
 function transformMeta(originalMeta: any[], serializeType: SerializeType) {
-  if(serializeType === SerializeType.Component) {
+  if (serializeType === SerializeType.Component) {
     return transfomrMetaForComp(originalMeta);
   } else {
     return transformMetaForPage(originalMeta);
@@ -245,7 +278,7 @@ function isFilePath(path: string): boolean {
 }
 
 /**
- * Accept a root source file directory path of marauder and process all `.vue` 
+ * Accept a root source file directory path of marauder and process all `.vue`
  * files in it, which will be directory `src` In marauder project.
  *
  * @export
