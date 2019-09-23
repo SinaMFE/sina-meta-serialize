@@ -10,7 +10,7 @@ enum DecoratorPropertyKeyname {
 
 const COMP_ROOT_CLASS_DECO = "SComponent";
 
-const PAGE_ROOT_CLASS_DECO = "Spage";
+const PAGE_ROOT_CLASS_DECO = "SPage";
 
 export function getCompTitle(component: any) {
   const decorator = getComponentDecoratorByName(

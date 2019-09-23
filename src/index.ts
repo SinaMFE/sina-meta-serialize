@@ -168,12 +168,34 @@ export function customSerailizeVueFilesWithSinaFormat(
   }
 
   const validEntries = filterEntries(entries, config);
+
   if (validEntries.length === 0) {
     // No file to be processed.
-    return undefined;
+    throw new Error(
+      "[sina-meta-serialize] No suitable serialization class entry was found.\n" +
+        arr2LineSepStr(entries) +
+        `\nPlease confirm that the entry class contains decorator ${arr2Str(
+          config.entryDecoratorFilters
+        )} which defined in config.`
+    );
+    // return undefined;
   }
   const output = customSerializeVueFiles(validEntries, config, serializeType);
   return transformMeta(output, serializeType);
+}
+
+function arr2LineSepStr(arr: any[]) {
+  if (!_.isArray(arr)) {
+    return "";
+  }
+  return arr.join("\n");
+}
+
+function arr2Str(arr: any[]) {
+  if (!_.isArray(arr)) {
+    return "";
+  }
+  return arr.join(",");
 }
 
 function transformMeta(originalMeta: any[], serializeType: SerializeType) {
@@ -299,7 +321,7 @@ export async function customSerializeVueByDirectory(
     return serializePage(rootDir, config);
   }
 
-  function serializePage(
+  async function serializePage(
     rootDir: string,
     config: CustomSerializerConfigForDirectory
   ) {

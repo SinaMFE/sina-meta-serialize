@@ -62,8 +62,8 @@ const fs = require("fs");
 const path = require("path");
 
 const config = {
-  serializeDecoratorNameList: ["Spage", "Design", "dataType"],
-  entryDecoratorFilters: ["Spage"],
+  serializeDecoratorNameList: ["SPage", "Design", "dataType"],
+  entryDecoratorFilters: ["SPage"],
   withSinaFormatTransformer: true,
   viewDirname: "taskEnvelop",
   serializeType: "page"
