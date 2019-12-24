@@ -124,7 +124,7 @@ function processCompatibility(map: sinaMeta.ClassMap) {
 
 function collectComponents(datalist: any[]): sinaMeta.ClassMap {
   const components = getAllComponents(datalist);
-  return _.compose<any, any, any>(
+  return _.compose(
     _.mapValues(_.head),
     _.groupBy("name"),
     _.map(transformComponent)
@@ -229,7 +229,7 @@ function transformComponentsTypeReferToDecoratorValue(
 
 function collectDataType(datalist: any[]): sinaMeta.ClassMap {
   const dependencies = getAllDenpendecies(datalist);
-  return _.compose<any, any, any, any>(
+  return _.compose(
     _.mapValues(_.head),
     _.groupBy("name"),
     _.compact,
@@ -326,7 +326,7 @@ function transformSingleDep(dep: any): sinaMeta.Class {
   };
 
   function getNameInDecoratorVal(decorators: any) {
-    return _.compose<any, any, any>(getDataTypeId, _.head, _.filter(isDataTypeDecorator))(decorators);
+    return _.compose(getDataTypeId, _.head, _.filter(isDataTypeDecorator))(decorators);
   }
 
   /**
@@ -383,7 +383,7 @@ function transformProps(
       design
     };
   });
-  return _.compose<any, any>(
+  return _.compose(
     _.mapValues(_.head),
     _.groupBy("name")
   )(props);
@@ -438,7 +438,7 @@ function transformReturnTypeForArrayType(type: any) {
  */
 function transformDecoratorToDesignForMember(member: any) {
   const decorators = member.decorators;
-  const transformedDecorator = _.compose<any, any, any>(
+  const transformedDecorator = _.compose(
     _.head,
     _.compact,
     _.map(transformDecorator)
@@ -467,12 +467,12 @@ function isDataTypeDecorator(decorator: any) {
  * @returns
  */
 function getDataTypeId(decorator: any) {
-  const jsonString = _.compose<any, any, any>(
+  const jsonString = _.compose(
     _.property("value"),
     _.head,
     _.property("args")
   )(decorator);
-  const type = _.compose<any, any, any>(
+  const type = _.compose(
     _.property("type"),
     _.head,
     _.property("args")
@@ -498,7 +498,7 @@ function getAllDenpendecies(dataList: any[]) {
     _.map(_.property("dependencies")),
     _.property("result")
   );
-  const dependencies = _.compose<any, any>(
+  const dependencies = _.compose(
     _.flatten,
     _.map(getDependencies)
   )(dataList);
@@ -512,12 +512,12 @@ function getAllDenpendecies(dataList: any[]) {
  * @param {any[]} dataList
  */
 function getAllComponents(dataList: any[]) {
-  const getComponents = _.compose<any, any, any>(
+  const getComponents = _.compose(
     _.flatten,
     _.map(_.property("root")),
     _.property("result")
   );
-  return _.compose<any, any>(
+  return _.compose(
     _.flatten,
     _.map(getComponents)
   )(dataList);

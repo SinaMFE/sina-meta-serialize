@@ -19,7 +19,7 @@ export function removeCompilationStageDecoratorsInTsText(
 function getDeletedSourceCode(source: string, ranges: ts.TextRange[]): string {
   // Check if ranges have errors during parsing(with same position).
   checkRanges(ranges);
-  const sortedReversedRanges: ts.TextRange[] = _.compose<any, any>(
+  const sortedReversedRanges: ts.TextRange[] = _.compose(
     _.reverse,
     _.sortBy(["pos"])
   )(ranges);
